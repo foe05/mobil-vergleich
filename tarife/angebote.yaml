@@ -1,23 +1,37 @@
 # Vorgaben für Optionen ohne feste Tariftabelle.
 # Preise werden pro Reise in der App eingetragen (Phase 2: automatisch per Fetcher).
+# Die Felder unter `suche` füllen die Suchlinks mit Ort und Reisezeit vor (Stand 2026-10-06,
+# im Browser geprüft). Fehlt `suche` oder ist ein Wert falsch, öffnet der Link nur die Startseite
+# bzw. die Seite ignoriert den Wert – dann hier korrigieren.
 mietwagen:
   - id: sixt
     name: Sixt
     link: https://www.sixt.de
     haustiere: pruefen
     verbrauch_l_100km: 6.5
+    suche:
+      filiale: "BRANCH:43955"   # Kassel, Holländische Str. 207c (Bf. Wilhelmshöhe wäre BRANCH:93)
+      titel: Kassel
   - id: europcar
     name: Europcar
     link: https://www.europcar.de
     haustiere: pruefen
     verbrauch_l_100km: 6.5
+    suche:
+      station: KSFC01           # Kassel, Leipziger Str. 65–71
   - id: getaround
     name: Getaround
-    link: https://de.getaround.com
+    link: https://getaround.com/de
     haustiere: pruefen        # legt der Fahrzeughalter fest
     verbrauch_l_100km: 6.0
+    suche:
+      adresse: Kassel
+      breite: 51.3127
+      laenge: 9.4797
 bahn:
   id: bahn
   name: Bahn
   link: https://www.bahn.de
   haustiere: ja               # Hund braucht je nach Größe ein eigenes Ticket
+  suche:
+    start: Kassel Hbf         # Ziel und Reisende trägt man auf bahn.de selbst ein

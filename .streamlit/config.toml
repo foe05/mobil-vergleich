@@ -3,13 +3,55 @@ headless = true
 port = 8501
 address = "0.0.0.0"
 enableXsrfProtection = true
+enableStaticServing = true          # Schriften aus static/ ausliefern
 
 [browser]
 gatherUsageStats = false
 
+[client]
+toolbarMode = "minimal"
+
 [theme]
-base = "light"
+showWidgetBorder = true
+baseRadius = "0.4rem"
+buttonRadius = "full"
+font = "instrument-sans, system-ui, sans-serif"
+headingFont = "instrument-serif, Georgia, serif"
+headingFontWeights = 400
+baseFontSize = 16
+
+[[theme.fontFaces]]
+family = "instrument-sans"
+url = "app/static/fonts/instrument-sans.woff2"
+weight = "400 700"
+
+[[theme.fontFaces]]
+family = "instrument-serif"
+url = "app/static/fonts/instrument-serif.woff2"
+weight = "400"
+style = "normal"
+
+[[theme.fontFaces]]
+family = "instrument-serif"
+url = "app/static/fonts/instrument-serif-italic.woff2"
+weight = "400"
+style = "italic"
+
+# Hell/Dunkel: der Knopf oben rechts in der App schaltet um, ohne Wahl gilt die Systemeinstellung
+[theme.light]
 primaryColor = "#1F5C3A"
-backgroundColor = "#FFFFFF"
-secondaryBackgroundColor = "#EEF2EE"
-textColor = "#111111"
+backgroundColor = "#F6F4EE"         # Papier statt Reinweiß
+secondaryBackgroundColor = "#ECE8DE"
+textColor = "#1C1B18"
+borderColor = "#DAD5C8"
+linkColor = "#1F5C3A"
+chartCategoricalColors = ["#1F5C3A", "#2E4A7D", "#A4492A"]
+
+[theme.dark]
+primaryColor = "#7CC49A"
+backgroundColor = "#161613"
+secondaryBackgroundColor = "#24231F"
+textColor = "#ECE9E1"
+borderColor = "#3A3832"
+linkColor = "#7CC49A"
+chartCategoricalColors = ["#7CC49A", "#8FA8DA", "#E08B66"]
