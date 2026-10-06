@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from engine import Eintrag, Profil, NICHT_GEFAHREN, lade_tarife
-from engine.eigenauto import zeitraum, zeitraeume, zeitraumkosten
+from engine.eigenauto import zeitraum, zeitraeume, zeitraumkosten, break_even, verlauf
 
 
 @pytest.fixture
@@ -102,3 +102,63 @@ def test_rein_zukuenftiger_zeitraum(profil):
     assert zr.label == "Februar 2027" and zr.tage == 0
     k = zeitraumkosten([e], profil, zr)
     assert (k.ist, k.mit_profil) == (40, 40)
+
+
+def drei_oma_ab(d):
+    return [Eintrag(datetime(d.year, d.month, d.day + i, 10), datetime(d.year, d.month, d.day + i, 18),
+                    "Oma", "scouter", "Carsharing", 100, 50, True) for i in range(3)]
+
+
+@pytest.fixture
+def basis():
+    drei = drei_oma_ab(date(2027, 9, 10))
+    alt = Eintrag(datetime(2026, 6, 1, 10), datetime(2026, 6, 1, 18), "Alt", "scouter", "Carsharing", 100, 50, True)
+    return drei + [alt]
+
+
+def test_break_even_schwelle(basis, profil):
+    b = break_even(basis, profil, date(2027, 10, 1))
+    assert (b.status, b.schwelle_km, b.km_jahr, b.weitere_fahrten, b.anlass, b.hochgerechnet) == \
+           ("schwelle", 9125, 300, 89, "Oma", False)
+
+
+def test_break_even_nie(basis):
+    assert break_even(basis, Profil("x", "X", "q", "s", {"a": 3650}, {"e": 0.6}), date(2027, 10, 1)).status == "nie"
+
+
+def test_break_even_bereits(basis):
+    assert break_even(basis, Profil("x", "X", "q", "s", {"a": 10}, {"e": 0.1}), date(2027, 10, 1)).status == "bereits"
+
+
+def test_break_even_zu_wenig_daten(basis, profil):
+    assert break_even(basis[:2], profil, date(2027, 10, 1)).status == "zu_wenig_daten"
+
+
+def test_break_even_keine_km(profil):
+    nullkm = [replace(e, km_geplant=0) for e in drei_oma_ab(date(2027, 9, 10))]
+    assert break_even(nullkm, profil, date(2027, 10, 1)).status == "zu_wenig_daten"
+
+
+def test_break_even_hochrechnung(profil):
+    b = break_even(drei_oma_ab(date(2027, 1, 1)), profil, date(2027, 1, 31))
+    assert b.hochgerechnet and b.km_jahr == pytest.approx(3650)
+
+
+def test_break_even_mindestspanne(profil):
+    assert break_even(drei_oma_ab(date(2027, 1, 25)), profil, date(2027, 1, 31)).km_jahr == pytest.approx(3650)
+
+
+def test_break_even_ignoriert_zukunft(basis, profil):
+    zukunft = replace(basis[0], start=datetime(2027, 12, 1), ende=datetime(2027, 12, 2))
+    assert break_even(basis + [zukunft], profil, date(2027, 10, 1)).km_jahr == 300
+
+
+def test_verlauf_endwerte(vier_faelle, profil):
+    zeilen = verlauf(vier_faelle, [profil], date(2026, 12, 31))
+    ende = {z["reihe"]: z["kumuliert"] for z in zeilen if z["datum"] == date(2026, 12, 31)}
+    assert ende["Heute"] == 212.49 and ende[profil.name] == pytest.approx(920 + 30 + 120)
+
+
+def test_verlauf_ohne_zukunft(vier_faelle, profil):
+    zeilen = verlauf(vier_faelle, [profil], date(2026, 10, 7))
+    assert max(z["datum"] for z in zeilen) == date(2026, 10, 7) and verlauf([], [profil], date(2026, 10, 7)) == []
