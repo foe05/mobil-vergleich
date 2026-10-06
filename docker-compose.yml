@@ -1,0 +1,16 @@
+# Läuft hinter dem Nginx Proxy Manager. Kein Port nach außen – NPM spricht den Container
+# über das gemeinsame Docker-Netzwerk an (Host: mobil-vergleich, Port: 8501).
+services:
+  mobil-vergleich:
+    build: .
+    container_name: mobil-vergleich
+    restart: unless-stopped
+    volumes:
+      - ./tarife:/app/tarife:ro       # Tarife ohne Rebuild anpassen
+    networks:
+      - proxy
+
+networks:
+  proxy:
+    external: true
+    name: ${PROXY_NETWORK:-npm_default}   # Name des NPM-Netzwerks ggf. anpassen (docker network ls)
