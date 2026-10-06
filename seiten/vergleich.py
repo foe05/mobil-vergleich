@@ -71,7 +71,7 @@ def setze_voreinstellung():
     if wahl in voreinstellungen():
         sd, stt, ed, et, km = voreinstellungen()[wahl]
         st.session_state.update(start_d=sd, start_t=stt, ende_d=ed, ende_t=et, km=km)
-    st.session_state["anlass"] = anlass_aus(wahl)
+        st.session_state["anlass"] = anlass_aus(wahl)   # nur eine echte Vorlage überschreibt den Anlass
 
 
 def anlass_aus(vorlage: str | None) -> str:
@@ -80,10 +80,7 @@ def anlass_aus(vorlage: str | None) -> str:
 
 
 def eigene_eingabe():
-    # Hand-Änderung hebt die Auswahl auf; ein selbst getippter Anlass bleibt
-    if st.session_state.get("anlass") == anlass_aus(st.session_state["preset"]):
-        st.session_state["anlass"] = ""
-    st.session_state["preset"] = None
+    st.session_state["preset"] = None   # Hand-Änderung hebt die Auswahl auf, der Anlass bleibt
 
 
 if "start_d" not in st.session_state:
