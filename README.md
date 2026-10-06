@@ -7,8 +7,10 @@ scouter, Flinkster, Sixt, Europcar, Getaround und Bahn für typische Reisen
 ## Aufbau
 
 ```
-tarife/      YAML je Anbieter – hier werden Preise gepflegt
-engine/      Preislogik (reine Python-Funktionen, getestet)
+tarife/      YAML je Anbieter und Eigenauto-Profile – hier werden Preise gepflegt
+engine/      Preislogik und Auswertung (reine Python-Funktionen, getestet)
+speicher/    SQLite-Zugriff für Entscheidungen und Fahrten
+seiten/      Streamlit-Seiten: Vergleich, Fahrten, Auswertung
 fetchers/    Phase 2: automatischer Abruf Sixt/Europcar (noch Platzhalter)
 app.py       Streamlit-Oberfläche
 tests/       Tests gegen offizielle Preisbeispiele der Anbieter
@@ -19,9 +21,12 @@ tests/       Tests gegen offizielle Preisbeispiele der Anbieter
 ```bash
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt
-pytest -q                 # sollte 8 grüne Tests zeigen
-streamlit run app.py      # http://localhost:8501
+pytest -q                 # sollte 34 grüne Tests zeigen
+MOBIL_DB=./daten/mobil.db streamlit run app.py   # http://localhost:8501
 ```
+
+Lokal liegt die Datenbank unter dem Pfad aus `MOBIL_DB` (hier `./daten/mobil.db`);
+ohne die Variable würde die App `/app/daten/mobil.db` verwenden, den Pfad im Container.
 
 ## Auf dem Hetzner-Server (Docker + Nginx Proxy Manager)
 
@@ -35,6 +40,20 @@ streamlit run app.py      # http://localhost:8501
    - SSL per Let's Encrypt, „Force SSL“
    - **Access List** mit Basic Auth für euch beide anlegen und zuweisen
 5. Link an deine Frau schicken, auf dem Handy zum Startbildschirm hinzufügen.
+
+## Fahrten und Auswertung
+
+- **Vergleich**: Preise der Anbieter für eine Fahrt; das Ergebnis lässt sich als Entscheidung speichern.
+- **Fahrten**: gespeicherte Entscheidungen, Kosten ohne Vergleich eintragen, tatsächliche Rechnung nachtragen.
+- **Auswertung**: Hätte sich ein eigenes Auto gelohnt? Break-even je Profil, Verlauf und was sich ändern müsste.
+
+Die Daten liegen in SQLite im Docker-Volume `mobil_daten` (`/app/daten/mobil.db`, Pfad per
+Umgebungsvariable `MOBIL_DB`). Das Volume überlebt `docker compose up -d --build` und Neuanlegen
+des Containers; es heißt fest `mobil_daten`, unabhängig vom Compose-Projektnamen.
+
+Die Profile für das eigene Auto stehen in `tarife/eigenes_auto.yaml`. Es gelten dieselben Regeln
+wie bei den Tarifen: jede Zahl mit `quelle` und `stand`, Geschätztes unter `unverifiziert`
+(in der App mit `*`). Auch hier reicht dank Volume-Mount ein Browser-Reload.
 
 ## Tarife pflegen
 

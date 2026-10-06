@@ -7,6 +7,7 @@ services:
     restart: unless-stopped
     volumes:
       - ./tarife:/app/tarife:ro       # Tarife ohne Rebuild anpassen
+      - mobil_daten:/app/daten        # SQLite mit Entscheidungen und Fahrten
     networks:
       - proxy
 
@@ -14,3 +15,7 @@ networks:
   proxy:
     external: true
     name: ${PROXY_NETWORK:-npm_default}   # Name des NPM-Netzwerks ggf. anpassen (docker network ls)
+
+volumes:
+  mobil_daten:
+    name: mobil_daten

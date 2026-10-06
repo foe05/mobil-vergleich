@@ -9,7 +9,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # nicht als root laufen
-RUN useradd -m appuser && chown -R appuser /app
+# /app/daten vorab anlegen: ein frisches Named Volume übernimmt Besitzer vom Image-Pfad
+ENV MOBIL_DB=/app/daten/mobil.db
+RUN useradd -m appuser && mkdir -p /app/daten && chown -R appuser /app
 USER appuser
 
 EXPOSE 8501
