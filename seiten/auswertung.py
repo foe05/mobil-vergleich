@@ -20,9 +20,16 @@ PROFILFARBEN = {
     "light": ["#1A6E40", "#3D63C2", "#BF7A22"],
     "dark": ["#237A48", "#6E8FE6", "#C0842A"],
 }
+# Lesbare Namen der Kostenposten aus eigenes_auto.yaml; unbekannte Schlüssel lesbar gemacht
+POSTEN = {"rate_oder_wertverlust": "Rate/Wertverlust", "versicherung": "Versicherung", "steuer": "Steuer",
+          "wartung": "Wartung", "energie": "Energie", "reifen_verschleiss": "Reifen/Verschleiß"}
 HINTERGRUND = {"light": "#F6F4EE", "dark": "#161613"}   # wie backgroundColor in config.toml
 M = modus()
 TINTE = PALETTEN[M]["tinte"]
+
+
+def posten_name(schluessel: str) -> str:
+    return POSTEN.get(schluessel, schluessel.replace("_", " ").capitalize())
 
 
 def name_mit_stern(p: Profil) -> str:
@@ -67,8 +74,8 @@ def break_even_satz(p: Profil, be: BreakEven) -> str:
     return "Für eine Schwelle braucht es mindestens drei Fahrten, die ihr mit eigenem Auto gemacht hättet."
 
 
-def verlaufsdiagramm(eintraege, profile: list[Profil], farben: dict[str, str], heute: date) -> alt.LayerChart:
-    df = pd.DataFrame(verlauf(eintraege, profile, heute))
+def verlaufsdiagramm(zeilen: list[dict], profile: list[Profil], farben: dict[str, str]) -> alt.LayerChart:
+    df = pd.DataFrame(zeilen)
     df["datum"] = pd.to_datetime(df["datum"])
     reihen = ["Heute"] + [p.name for p in profile]
 
@@ -179,8 +186,8 @@ farben = {"Heute": TINTE} | {p.name: PROFILFARBEN[M][i % len(PROFILFARBEN[M])] f
 zeilen = []
 for i, p in enumerate(reihenfolge, 1):
     k = kosten[p.id]
-    posten = "".join(f"<span>{escape(n)}</span><span>{euro(v)}/Jahr</span>" for n, v in p.fix_pro_jahr.items() if v)
-    posten += "".join(f"<span>{escape(n)}</span><span>{euro(v, 3)}/km</span>"
+    posten = "".join(f"<span>{escape(posten_name(n))}</span><span>{euro(v)}/Jahr</span>" for n, v in p.fix_pro_jahr.items() if v)
+    posten += "".join(f"<span>{escape(posten_name(n))}</span><span>{euro(v, 3)}/km</span>"
                       for n, v in p.variabel_pro_km.items() if v)
     zeilen.append(f"""
 <details>
@@ -198,12 +205,17 @@ st.html(f'<div class="rang">{"".join(zeilen)}</div>')
 # ---------- Verlauf ----------
 
 st.subheader("Verlauf", anchor=False)
-st.caption("Kosten kumuliert seit der ersten Fahrt – heute gegen jedes Profil.")
-st.html('<div class="legende">' + "".join(
-    f'<span class="{"heute" if r == "Heute" else ""}"><i style="background:{f}"></i>{escape(r)}</span>'
-    for r, f in farben.items()) + "</div>")
-st.altair_chart(verlaufsdiagramm(eintraege, profile, farben, heute), width="stretch",
-                alt="Kumulierte Kosten seit der ersten Fahrt: heute gegen jedes Profil")
+verlaufszeilen = verlauf(eintraege, profile, heute)   # leer, solange alle Fahrten noch bevorstehen
+if verlaufszeilen:
+    st.caption("Kosten kumuliert seit der ersten Fahrt bis heute, ohne geplante Fahrten – "
+               "heute gegen jedes Profil.")
+    st.html('<div class="legende">' + "".join(
+        f'<span class="{"heute" if r == "Heute" else ""}"><i style="background:{f}"></i>{escape(r)}</span>'
+        for r, f in farben.items()) + "</div>")
+    st.altair_chart(verlaufsdiagramm(verlaufszeilen, profile, farben), width="stretch",
+                    alt="Kumulierte Kosten seit der ersten Fahrt bis heute: heute gegen jedes Profil")
+else:
+    st.caption("Der Verlauf beginnt mit der ersten Fahrt, die schon stattgefunden hat.")
 
 # ---------- Annahmen und Stand ----------
 
@@ -219,7 +231,7 @@ fuss = [
 ]
 if any(p.unverifiziert for p in profile):
     fuss.append("* enthält geschätzte, nicht belegte Werte: " + " · ".join(
-        f"{escape(p.name)} ({escape(', '.join(p.unverifiziert))})" for p in profile if p.unverifiziert))
+        f"{escape(p.name)} ({escape(', '.join(map(posten_name, p.unverifiziert)))})" for p in profile if p.unverifiziert))
 fuss.append("Keine offenen Rechnungen." if not offen else
             f"{offen} {'Fahrt' if offen == 1 else 'Fahrten'} mit offener Rechnung – dort zählt der geplante Preis.")
 fuss += [escape(h) for h in T["hinweise"]]

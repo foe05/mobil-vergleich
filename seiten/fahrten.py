@@ -1,4 +1,4 @@
-"""Seite Fahrten: gespeicherte Entscheidungen, Kosten ohne Vergleich, Rechnung nachtragen."""
+"""Seite Fahrten: gespeicherte Entscheidungen, Kosten ohne Vergleich, Rechnung nachtragen, ändern."""
 from __future__ import annotations
 
 from dataclasses import replace
@@ -98,7 +98,18 @@ def rangliste(e: Eintrag) -> str:
 
 
 def details(con, e: Eintrag) -> None:
-    with st.expander("Nachtragen, Vergleich, Löschen", key=f"ex_{e.id}"):
+    with st.expander("Ändern, Nachtragen, Vergleich, Löschen", key=f"ex_{e.id}"):
+        anlass = st.text_input("Anlass", value=e.anlass, key=f"anlass_{e.id}")
+        eigen = st.segmented_control("Mit eigenem Auto?", list(EIGENAUTO), key=f"eigen_{e.id}",
+                                     default="wäre gefahren" if e.eigenauto_gefahren else "nicht gefahren")
+        if st.button("Ändern", key=f"aendern_{e.id}", disabled=eigen is None):
+            try:
+                aendern(con, replace(e, anlass=anlass.strip(), eigenauto_gefahren=EIGENAUTO[eigen]))
+            except Exception as fehler:
+                st.error(f"Speichern fehlgeschlagen: {fehler}")
+            else:
+                st.rerun()
+        st.divider()
         with st.container(horizontal=True, gap="small"):
             preis = st.number_input("Tatsächlicher Preis €", min_value=0.0, step=1.0, format="%.2f",
                                     value=float(e.preis), key=f"preis_{e.id}")

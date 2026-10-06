@@ -34,6 +34,24 @@ def verbindung() -> sqlite3.Connection | None:
         return None
 
 
+# Eingaben der Seite Vergleich, die einen Wechsel auf Fahrten/Auswertung überstehen sollen
+VERGLEICH_EINGABEN = ("preset", "start_d", "start_t", "ende_d", "ende_t", "km", "hund", "km_paket", "sb",
+                      "spritpreis", "bahn_preis", "bahn_vor_ort", "anlass", "wahl", "wahl_eigenauto")
+ANGEBOT_FELDER = ("preis", "frei", "mehr", "verbr", "extras")
+
+
+def eingaben_halten() -> None:
+    """Streamlit verwirft den Zustand von Widgets, die ein Lauf nicht zeigt. Neu zuweisen macht daraus
+    gewöhnlichen Session State, der bleibt. Muss vor jeder Seite laufen (app.py)."""
+    try:
+        ids = [m["id"] for m in tarife()["angebote"].get("mietwagen", [])]
+    except Exception:   # Tarife kaputt: die Seite meldet das selbst
+        ids = []
+    for k in (*VERGLEICH_EINGABEN, *(f"{i}_{f}" for i in ids for f in ANGEBOT_FELDER)):
+        if k in st.session_state:
+            st.session_state[k] = st.session_state[k]
+
+
 def euro(betrag: float, stellen: int = 2) -> str:
     return f"{betrag:,.{stellen}f}".replace(",", "X").replace(".", ",").replace("X", ".") + " €"
 

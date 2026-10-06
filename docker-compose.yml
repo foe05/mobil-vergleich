@@ -5,6 +5,8 @@ services:
     build: .
     container_name: mobil-vergleich
     restart: unless-stopped
+    environment:
+      - TZ=Europe/Berlin              # Uhrzeiten werden lokal eingegeben; "heute" und "Rechnung offen" danach
     volumes:
       - ./tarife:/app/tarife:ro       # Tarife ohne Rebuild anpassen
       - mobil_daten:/app/daten        # SQLite mit Entscheidungen und Fahrten

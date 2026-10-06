@@ -97,8 +97,9 @@ Bezeichnungen: `F` = Summe `fix_pro_jahr`, `v` = Summe `variabel_pro_km`.
 
 ### Zeitraumkosten
 
-Zeitraum = Kalendermonat, -quartal, -jahr oder „Gesamt“ (erster Eintrag bis heute). Ein laufender
-Zeitraum zählt nur bis heute. `tage` = Tage im (ggf. gekürzten) Zeitraum.
+Zeitraum = Kalendermonat, -quartal, -jahr oder „Gesamt“ (erster Eintrag bis heute). In einem laufenden
+Zeitraum zählen die Fixkosten bis heute oder bis zur letzten geplanten Fahrt darin, je nachdem, was
+später liegt – nie über das Kalenderende hinaus. `tage` = Tage im (ggf. gekürzten) Zeitraum.
 
 - **Ist** = Σ `preis` aller Einträge mit `gefahren`.
 - **Mit Profil** = `F × tage / 365`
@@ -142,8 +143,8 @@ Gespeichert wird mit Vergleichs-Schnappschuss; kurze Bestätigung.
 
 **Fahrten** – Knopf „Kosten ohne Vergleich eintragen“ (Formular: Datum von/bis, Anlass, Art, Anbieter,
 km, Betrag, „Mit eigenem Auto?“). Liste nach Monaten, neueste zuerst, Zeilenstil der Rangliste,
-Hinweis „Rechnung offen“. Aufgeklappt: tatsächlichen Preis/km nachtragen, ändern, löschen (mit Rückfrage),
-damaligen Vergleich ansehen.
+Hinweis „Rechnung offen“. Aufgeklappt: tatsächlichen Preis/km nachtragen, ändern (Anlass und „Mit eigenem
+Auto?“; Option, Datum und geplante km bleiben), löschen (mit Rückfrage), damaligen Vergleich ansehen.
 
 **Auswertung** – Zeitraumart (Monat, Quartal, Jahr, Gesamt) und konkreter Zeitraum. Kernsatz groß, z. B.
 „Ein E-Kombi Leasing hätte euch im Q4 2026 312 € mehr gekostet.“ Je Profil: heute, mit Profil,

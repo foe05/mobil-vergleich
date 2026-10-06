@@ -86,6 +86,9 @@ def eigene_eingabe():
 if "start_d" not in st.session_state:
     st.session_state["preset"] = "Oma (1 Nacht)"
     setze_voreinstellung()
+# Vorgaben über den Session State statt value=, damit die Werte den Seitenwechsel überstehen (app.py)
+for k, v in {"hund": True, "km_paket": True, "sb": False, "spritpreis": 1.75}.items():
+    st.session_state.setdefault(k, v)
 
 # ---------- Eingaben ----------
 
@@ -104,11 +107,11 @@ with st.container(horizontal=True, gap="small"):
 st.number_input("Kilometer gesamt", min_value=0, step=10, key="km", on_change=eigene_eingabe)
 
 with st.expander("Annahmen"):
-    hund = st.toggle("Hund fährt mit", value=True)
-    km_paket = st.toggle("scouter 500-km-Paket nutzen", value=True,
+    hund = st.toggle("Hund fährt mit", key="hund")
+    km_paket = st.toggle("scouter 500-km-Paket nutzen", key="km_paket",
                          help="Restkilometer verfallen nicht – lohnt sich bei regelmäßiger Nutzung.")
-    sb = st.toggle("Flinkster Selbstbehalt reduzieren", value=False)
-    spritpreis = st.number_input("Spritpreis €/l", value=1.75, step=0.05, format="%.2f")
+    sb = st.toggle("Flinkster Selbstbehalt reduzieren", key="sb")
+    spritpreis = st.number_input("Spritpreis €/l", step=0.05, format="%.2f", key="spritpreis")
 
 start = datetime.combine(st.session_state["start_d"], st.session_state["start_t"])
 ende = datetime.combine(st.session_state["ende_d"], st.session_state["ende_t"])
@@ -142,9 +145,9 @@ with st.expander("Angebote eintragen – Sixt, Europcar, Getaround, Bahn"):
                                        help="0 = unbegrenzt")
                 mehr = st.number_input("Mehr-km €/km", min_value=0.0, step=0.05, format="%.2f",
                                        key=f"{m['id']}_mehr")
+            st.session_state.setdefault(f"{m['id']}_verbr", float(m.get("verbrauch_l_100km", 6.5)))
             with st.container(horizontal=True, gap="small"):
-                verbr = st.number_input("l/100 km", min_value=0.0, step=0.5,
-                                        value=float(m.get("verbrauch_l_100km", 6.5)), key=f"{m['id']}_verbr")
+                verbr = st.number_input("l/100 km", min_value=0.0, step=0.5, key=f"{m['id']}_verbr")
                 extras = st.number_input("Extras €", min_value=0.0, step=5.0, key=f"{m['id']}_extras",
                                          help="z. B. Reinigungspauschale wegen Hund, Zusatzfahrer")
             miet.append(MietAngebot(m["id"], m["name"], preis, frei, mehr, verbr, extras,
@@ -154,8 +157,8 @@ with st.expander("Angebote eintragen – Sixt, Europcar, Getaround, Bahn"):
                        icon=":material/open_in_new:")
         st.caption("Start und Reisezeit sind vorbelegt – Ziel und Reisende auf bahn.de ergänzen.")
         bahn_preis = st.number_input("Tickets gesamt € – Familie und Hund, hin und zurück",
-                                     min_value=0.0, step=5.0)
-        bahn_vor_ort = st.number_input("Mobilität am Ziel €", min_value=0.0, step=5.0)
+                                     min_value=0.0, step=5.0, key="bahn_preis")
+        bahn_vor_ort = st.number_input("Mobilität am Ziel €", min_value=0.0, step=5.0, key="bahn_vor_ort")
     bahn = BahnAngebot(bahn_preis, bahn_vor_ort, b.get("haustiere", "ja"))
 
 # ---------- Ergebnis ----------

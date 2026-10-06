@@ -163,3 +163,24 @@ def test_verlauf_endwerte(vier_faelle, profil):
 def test_verlauf_ohne_zukunft(vier_faelle, profil):
     zeilen = verlauf(vier_faelle, [profil], date(2026, 10, 7))
     assert max(z["datum"] for z in zeilen) == date(2026, 10, 7) and verlauf([], [profil], date(2026, 10, 7)) == []
+
+
+@pytest.mark.parametrize("inhalt", ["typ: eigenauto\nprofile: [ {id: x\n", "- nur\n- eine Liste\n", ""])
+def test_eigenes_auto_yaml_kaputt(tmp_path, inhalt):
+    (tmp_path / "eigenes_auto.yaml").write_text(inhalt, encoding="utf-8")
+    t = lade_tarife(tmp_path)
+    assert t["eigenauto"] == [] and t["hinweise"][0].startswith("eigenes_auto.yaml konnte nicht gelesen werden: ")
+
+
+def test_profil_ohne_felder(tmp_path):
+    (tmp_path / "eigenes_auto.yaml").write_text(
+        "typ: eigenauto\nprofile:\n  - nur ein Text\n"
+        "  - {id: ok, name: OK, quelle: q, stand: '2026-10-06', fix_pro_jahr: {a: 1}, variabel_pro_km: {e: 0.1}}\n",
+        encoding="utf-8")
+    t = lade_tarife(tmp_path)
+    assert [p.id for p in t["eigenauto"]] == ["ok"] and "nur ein Text" in t["hinweise"][0]
+
+
+def test_verlauf_nur_zukunft(profil):
+    e = Eintrag(datetime(2026, 10, 20, 10), datetime(2026, 10, 21, 16), "Oma", "scouter", "Carsharing", 100, 80, True)
+    assert verlauf([e], [profil], date(2026, 10, 7)) == []
