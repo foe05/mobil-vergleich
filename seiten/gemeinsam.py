@@ -131,6 +131,17 @@ def gestaltung() -> None:
                       font-variant-numeric: tabular-nums; max-width: 22rem; }}
       .rang .posten span:nth-child(even) {{ text-align: right; }}
       .rang .innen ul {{ margin: 0.6rem 0 0; padding-left: 1.1rem; color: var(--text2); }}
+      .fzeile {{ border-top: 1px solid var(--linie); padding: 0.8rem 0 0.5rem; margin-top: 0.4rem;
+                display: grid; grid-template-columns: 3.2rem 1fr auto; gap: 0 0.5rem; align-items: baseline; }}
+      .fzeile .datum {{ color: var(--blass); font-variant-numeric: tabular-nums; }}
+      .fzeile .wer b {{ font-weight: 600; }}
+      .fzeile .wer span {{ color: var(--leise); }}
+      .fzeile .betrag {{ font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }}
+      .fzeile .meta {{ grid-column: 2 / 4; font-size: 0.85rem; color: var(--leise); margin-top: 0.3rem; }}
+      .fzeile .meta i {{ display: inline-block; width: 0.55rem; height: 0.55rem; border-radius: 50%; margin-right: 0.35rem; }}
+      .fzeile .marke {{ display: inline-block; border: 1px solid var(--linie); border-radius: 0.8rem;
+                       padding: 0 0.5rem; margin-left: 0.35rem; font-size: 0.78rem; white-space: nowrap; }}
+      .fzeile .marke.offen {{ border-color: var(--akzent); color: var(--akzent); font-weight: 600; }}
       .fuss {{ color: var(--blass); font-size: 0.8rem; margin-top: 2.5rem; }}
       .fuss a {{ color: inherit; }}
     </style>
