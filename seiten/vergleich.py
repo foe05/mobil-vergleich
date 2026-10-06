@@ -7,8 +7,9 @@ from urllib.parse import quote, urlencode
 
 import streamlit as st
 
-from engine import BahnAngebot, MietAngebot, Szenario, vergleiche
-from seiten.gemeinsam import GRUPPENFARBEN, euro, modus, tarife, zahl, zeitpunkt
+from engine import NICHT_GEFAHREN, BahnAngebot, Eintrag, MietAngebot, Szenario, vergleiche
+from seiten.gemeinsam import GRUPPENFARBEN, euro, modus, tarife, verbindung, zahl, zeitpunkt
+from speicher.fahrten import anlegen
 
 HUND = {"ja": "Hund erlaubt", "nein": "Hund nicht erlaubt", "pruefen": "Hunderegel prüfen"}
 FARBEN = GRUPPENFARBEN[modus()]
@@ -70,10 +71,19 @@ def setze_voreinstellung():
     if wahl in voreinstellungen():
         sd, stt, ed, et, km = voreinstellungen()[wahl]
         st.session_state.update(start_d=sd, start_t=stt, ende_d=ed, ende_t=et, km=km)
+    st.session_state["anlass"] = anlass_aus(wahl)
+
+
+def anlass_aus(vorlage: str | None) -> str:
+    """Vorlagenname ohne Klammerzusatz: "Oma (1 Nacht)" -> "Oma"."""
+    return vorlage.split(" (")[0] if vorlage else ""
 
 
 def eigene_eingabe():
-    st.session_state["preset"] = None   # Hand-Änderung hebt die Auswahl auf
+    # Hand-Änderung hebt die Auswahl auf; ein selbst getippter Anlass bleibt
+    if st.session_state.get("anlass") == anlass_aus(st.session_state["preset"]):
+        st.session_state["anlass"] = ""
+    st.session_state["preset"] = None
 
 
 if "start_d" not in st.session_state:
@@ -198,3 +208,54 @@ fuss = " · ".join(f'<a href="{escape(t["quelle"])}">{escape(t["name"])}</a>: St
                   for t in T["carsharing"])
 stern = "* enthält nicht bestätigte Tarifwerte. " if any(e.unsicher for e in ergebnisse) else ""
 st.html(f'<p class="fuss">{stern}Tarife: {fuss}. Einmalkosten wie Registrierung sind nicht enthalten.</p>')
+
+
+# ---------- Entscheidung festhalten ----------
+
+EIGENAUTO = {"wäre gefahren": True, "nicht gefahren": False}
+
+
+def schnappschuss() -> dict:
+    """Szenario, Rangliste und Tarifstand zum Zeitpunkt der Entscheidung – nur JSON-Typen."""
+    return {
+        "szenario": {"start": start.isoformat(), "ende": ende.isoformat(), "km": sz.km,
+                     "spritpreis": spritpreis, "hund": hund, "km_paket_nutzen": km_paket,
+                     "selbstbehalt_reduzieren": sb},
+        "rangliste": [{"anbieter": e.anbieter, "option": e.option, "gruppe": e.gruppe,
+                       "gesamt": e.gesamt, "posten": dict(e.posten)} for e in ergebnisse],
+        "tarifstand": {t["name"]: str(t["stand"]) for t in T["carsharing"]},
+    }
+
+
+st.subheader("Entscheidung festhalten", anchor=False)
+con = verbindung()
+if con is not None:
+    nach_name = {f"{e.anbieter} · {e.option}": e for e in ergebnisse}
+    wahl = st.pills("Gefahren mit", [*nach_name, NICHT_GEFAHREN], key="wahl")
+    if "anlass" not in st.session_state:
+        st.session_state["anlass"] = anlass_aus(st.session_state.get("preset"))
+    anlass = st.text_input("Anlass", key="anlass")
+    eigen = st.segmented_control("Mit eigenem Auto?", list(EIGENAUTO), key="wahl_eigenauto")
+
+    gewaehlt = nach_name.get(wahl)
+    eintrag = Eintrag(start=start, ende=ende, anlass=anlass.strip(), ergebnis=wahl or "",
+                      gruppe=gewaehlt.gruppe if gewaehlt else "keine", km_geplant=sz.km,
+                      preis_geplant=gewaehlt.gesamt if gewaehlt else 0.0,
+                      eigenauto_gefahren=EIGENAUTO.get(eigen, False))
+    # Fingerabdruck verhindert doppeltes Speichern bei Doppelklick oder erneutem Klick
+    fingerabdruck = (eintrag.start, eintrag.ende, eintrag.anlass, eintrag.ergebnis,
+                     eintrag.km_geplant, eintrag.preis_geplant, eintrag.eigenauto_gefahren)
+    schon = st.session_state.get("gespeichert") == fingerabdruck
+    if st.button("Gespeichert" if schon else "Speichern", type="primary",
+                 disabled=wahl is None or eigen is None or schon) and not schon:
+        try:
+            eintrag.vergleich = schnappschuss()
+            anlegen(con, eintrag)
+        except Exception as fehler:   # sqlite, Platte voll, schreibgeschützt …
+            st.error(f"Speichern fehlgeschlagen: {fehler}")
+        else:
+            st.session_state["gespeichert"] = fingerabdruck
+            st.session_state["toast"] = True
+            st.rerun()   # Knopf zeigt danach „Gespeichert“ und ist gesperrt
+    if st.session_state.pop("toast", False):
+        st.toast("Gespeichert", icon=":material/check:")
