@@ -16,10 +16,15 @@ class Zeitraum:
     von: date
     bis: date
     label: str
+    kalender_bis: date | None = None   # ungekürztes Ende; geplante Fahrten zählen bis hierhin mit
+
+    def __post_init__(self):
+        if self.kalender_bis is None:
+            self.kalender_bis = self.bis
 
     @property
     def tage(self) -> int:
-        return (self.bis - self.von).days + 1
+        return max(0, (self.bis - self.von).days + 1)
 
 
 @dataclass
@@ -29,7 +34,8 @@ class ZeitraumKosten:
     differenz: float         # positiv: das eigene Auto wäre teurer gewesen
 
 
-def zeitraum(art: str, bezug: date, heute: date, erster: date | None = None) -> Zeitraum:
+def zeitraum(art: str, bezug: date, heute: date, erster: date | None = None,
+             letzter: date | None = None) -> Zeitraum:
     """Kalenderzeitraum, der `bezug` enthält; ein laufender Zeitraum endet heute."""
     if art == "monat":
         von = date(bezug.year, bezug.month, 1)
@@ -43,10 +49,10 @@ def zeitraum(art: str, bezug: date, heute: date, erster: date | None = None) -> 
     elif art == "jahr":
         von, ende, label = date(bezug.year, 1, 1), date(bezug.year, 12, 31), str(bezug.year)
     elif art == "gesamt":
-        von, ende, label = erster or bezug, heute, "Gesamt"
+        von, ende, label = erster or bezug, max(heute, letzter or heute), "Gesamt"
     else:
         raise ValueError(f"Unbekannte Zeitraumart: {art}")
-    return Zeitraum(art, von, min(ende, heute), label)
+    return Zeitraum(art, von, min(ende, heute), label, kalender_bis=ende)
 
 
 def zeitraeume(art: str, eintraege: list[Eintrag], heute: date) -> list[Zeitraum]:
@@ -55,13 +61,16 @@ def zeitraeume(art: str, eintraege: list[Eintrag], heute: date) -> list[Zeitraum
         return []
     tage = [e.start.date() for e in eintraege]
     if art == "gesamt":
-        return [zeitraum("gesamt", min(tage), heute, erster=min(tage))]
-    gefunden = {zeitraum(art, t, heute).von: zeitraum(art, t, heute) for t in tage}
+        return [zeitraum("gesamt", min(tage), heute, erster=min(tage), letzter=max(tage))]
+    gefunden = {}
+    for t in tage:
+        zr = zeitraum(art, t, heute)
+        gefunden[zr.von] = zr
     return [gefunden[v] for v in sorted(gefunden, reverse=True)]
 
 
 def zeitraumkosten(eintraege: list[Eintrag], profil: Profil, zr: Zeitraum) -> ZeitraumKosten:
-    im_zeitraum = [e for e in eintraege if zr.von <= e.start.date() <= zr.bis]
+    im_zeitraum = [e for e in eintraege if zr.von <= e.start.date() <= zr.kalender_bis]
     ist = sum(e.preis for e in im_zeitraum if e.gefahren)
     mit_profil = (profil.fix * zr.tage / 365
                   + sum(e.km * profil.variabel for e in im_zeitraum if e.eigenauto_gefahren)

@@ -86,3 +86,19 @@ def test_labels_jahr_gesamt_und_reihenfolge(vier_faelle):
     assert zeitraum("gesamt", date(2026, 10, 6), heute=date(2026, 10, 6), erster=date(2026, 10, 1)).label == "Gesamt"
     spaeter = Eintrag(datetime(2026, 12, 2), datetime(2026, 12, 2), "x", "Bahn", "Bahn", 10, 5, False)
     assert [z.label for z in zeitraeume("monat", vier_faelle + [spaeter], date(2027, 1, 15))] == ["Dezember 2026", "Oktober 2026"]
+
+
+def test_geplante_fahrt_zaehlt_im_eigenen_zeitraum(vier_faelle, profil):
+    geplant = Eintrag(datetime(2026, 11, 20), datetime(2026, 11, 20), "Plan", "Bahn", "Bahn", 10, 40, False)
+    zr = zeitraum("quartal", date(2026, 10, 10), heute=date(2026, 11, 15))
+    k = zeitraumkosten(vier_faelle + [geplant], profil, zr)
+    assert zr.tage == 46 and k.ist == 252.49 and k.mit_profil == 460.0 + 30 + 120 + 40
+
+
+def test_rein_zukuenftiger_zeitraum(profil):
+    e = Eintrag(datetime(2027, 2, 10), datetime(2027, 2, 10), "Plan", "Bahn", "Bahn", 10, 40, False)
+    heute = date(2026, 11, 15)
+    zr = zeitraeume("monat", [e], heute)[0]
+    assert zr.label == "Februar 2027" and zr.tage == 0
+    k = zeitraumkosten([e], profil, zr)
+    assert (k.ist, k.mit_profil) == (40, 40)
