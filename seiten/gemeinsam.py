@@ -158,7 +158,7 @@ def gestaltung() -> None:
       knopf.innerHTML = {json.dumps(SONNE if m == "dark" else MOND).replace("<", "\\u003c")};
       knopf.addEventListener("click", () => {{
         // Streamlit merkt sich das Design je Pfad der zuerst geladenen Seite – daher für alle Seiten setzen
-        const basis = window.location.pathname.replace(/(fahrten|auswertung)\/?$/, "");
+        const basis = window.location.pathname.replace(/(fahrten|auswertung)\\/?$/, "");
         for (const seite of ["", "fahrten", "auswertung"]) {{
           try {{ localStorage.setItem(`stActiveTheme-${{basis}}${{seite}}-v2`, JSON.stringify("{ziel}")); }} catch (e) {{}}
         }}

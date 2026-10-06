@@ -73,8 +73,11 @@ def zeitraeume(art: str, eintraege: list[Eintrag], heute: date) -> list[Zeitraum
 
 def zeitraumkosten(eintraege: list[Eintrag], profil: Profil, zr: Zeitraum) -> ZeitraumKosten:
     im_zeitraum = [e for e in eintraege if zr.von <= e.start.date() <= zr.kalender_bis]
+    # Fixkosten bis heute bzw. bis zur letzten geplanten Fahrt im Zeitraum, nie über das Kalenderende
+    ende = min(zr.kalender_bis, max([zr.bis] + [e.start.date() for e in im_zeitraum]))
+    tage = max(0, (ende - zr.von).days + 1)
     ist = sum(e.preis for e in im_zeitraum if e.gefahren)
-    mit_profil = (profil.fix * zr.tage / 365
+    mit_profil = (profil.fix * tage / 365
                   + sum(e.km * profil.variabel for e in im_zeitraum if e.eigenauto_gefahren)
                   + sum(e.preis for e in im_zeitraum if e.gefahren and not e.eigenauto_gefahren))
     ist, mit_profil = round(ist, 2), round(mit_profil, 2)

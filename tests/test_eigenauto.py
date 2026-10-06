@@ -92,7 +92,8 @@ def test_geplante_fahrt_zaehlt_im_eigenen_zeitraum(vier_faelle, profil):
     geplant = Eintrag(datetime(2026, 11, 20), datetime(2026, 11, 20), "Plan", "Bahn", "Bahn", 10, 40, False)
     zr = zeitraum("quartal", date(2026, 10, 10), heute=date(2026, 11, 15))
     k = zeitraumkosten(vier_faelle + [geplant], profil, zr)
-    assert zr.tage == 46 and k.ist == 252.49 and k.mit_profil == 460.0 + 30 + 120 + 40
+    # Fixkosten laufen bis zur geplanten Fahrt am 20.11.: 1.10.–20.11. = 51 Tage
+    assert zr.tage == 46 and k.ist == 252.49 and k.mit_profil == 510.0 + 30 + 120 + 40
 
 
 def test_rein_zukuenftiger_zeitraum(profil):
@@ -101,7 +102,7 @@ def test_rein_zukuenftiger_zeitraum(profil):
     zr = zeitraeume("monat", [e], heute)[0]
     assert zr.label == "Februar 2027" and zr.tage == 0
     k = zeitraumkosten([e], profil, zr)
-    assert (k.ist, k.mit_profil) == (40, 40)
+    assert (k.ist, k.mit_profil) == (40, 100.0 + 40)   # Fixkosten 1.–10.2. = 10 Tage
 
 
 def drei_oma_ab(d):

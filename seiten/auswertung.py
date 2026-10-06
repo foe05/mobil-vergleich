@@ -115,7 +115,7 @@ st.html("""
 <style>
   .sieger .kernsatz { font-family: instrument-serif, Georgia, serif; font-size: 2.1rem; line-height: 1.15;
                       margin: 0.4rem 0 0.3rem; font-variant-numeric: tabular-nums; }
-  .sieger .kernsatz b { font-weight: 400; color: var(--akzent); }
+  .sieger .kernsatz b { font-weight: 400; color: var(--tinte); }
   .sieger .stand { color: var(--leise); }
   .rang .satz { grid-column: 2 / 4; color: var(--text2); margin-top: 0.4rem; font-size: 0.95rem; }
   .rang .meta i, .legende i { display: inline-block; width: 0.9rem; height: 3px; border-radius: 2px;
@@ -209,7 +209,8 @@ st.altair_chart(verlaufsdiagramm(eintraege, profile, farben, heute), width="stre
 
 offen = sum(e.rechnung_offen(datetime.now()) for e in eintraege)
 fuss = [
-    "Annahmen: Fixkosten zählen anteilig je Tag, ein laufender Zeitraum nur bis heute. Für die Schwelle "
+    "Annahmen: Fixkosten zählen anteilig je Tag, ein laufender Zeitraum bis heute bzw. bis zur letzten "
+    "geplanten Fahrt darin. Für die Schwelle "
     "kosten zusätzliche km heute denselben Durchschnittspreis pro km wie eure bisherigen Fahrten, "
     "die ihr mit eigenem Auto gemacht hättet (letzte 12 Monate).",
     "Profilstand: " + " · ".join(
