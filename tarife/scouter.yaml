@@ -1,0 +1,36 @@
+# scouter Carsharing Kassel – stationsbasiert, Sprit inklusive
+# Quelle: https://scouter.de/kassel (abgerufen 2026-10-06)
+anbieter: scouter
+name: scouter Kassel
+typ: carsharing
+quelle: https://scouter.de/kassel
+stand: "2026-10-06"
+startpreis: 1.79            # pro Fahrt (verifiziert)
+sprit_inklusive: true
+takt_minuten: 15            # Abrechnungstakt – NICHT verifiziert, ggf. anpassen
+erste_stunde_voll: false
+haustiere: pruefen          # ja | nein | pruefen – Regel in den AGB nachlesen
+km_paket:                   # 500-km-Paket, zeitlich unbefristet
+  preis: 160
+  km: 500
+  km_preis: 0.32            # (verifiziert)
+klassen:
+  - id: M
+    name: Klasse M (Kombi)
+    familientauglich: true
+    stundenpreis: 3.95      # verifiziert
+    tagespreis: 35.0        # aus offiziellem Preisbeispiel abgeleitet (100 km, 24 h, Kombi = 68,79 €)
+    wochenpreis: 150.0      # NICHT verifiziert (ältere Quelle)
+    km_preis: 0.42          # regulärer km-Preis ohne Paket (verifiziert)
+    unverifiziert: [wochenpreis]
+  - id: L
+    name: Klasse L (großer Kombi/Transporter)
+    familientauglich: true
+    stundenpreis: 4.95      # verifiziert
+    tagespreis: 45.0        # NICHT verifiziert (ältere Quelle)
+    wochenpreis: 200.0      # NICHT verifiziert (ältere Quelle)
+    km_preis: 0.42
+    unverifiziert: [tagespreis, wochenpreis]
+hinweise:
+  - Nachttarif (0–7 Uhr) ist nicht modelliert – echte Kosten können leicht darunter liegen.
+  - Einmalig Aktivierung 29–39 €, optional Unfallschutz ab 99 €/Jahr – nicht in der Fahrt enthalten.

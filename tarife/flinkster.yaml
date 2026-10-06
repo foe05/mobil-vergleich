@@ -1,0 +1,34 @@
+# DB Flinkster – stationsbasiert, Sprit inklusive
+# Quelle: https://www.flinkster.de (Preise ab 01.09.2026, abgerufen 2026-10-06)
+anbieter: flinkster
+name: Flinkster
+typ: carsharing
+quelle: https://www.flinkster.de/de/start#preise
+stand: "2026-10-06"
+startpreis: 1.90            # Buchungsgebühr pro Buchung
+sprit_inklusive: true
+takt_minuten: 15            # erste Stunde voll, danach je angefangene Viertelstunde
+erste_stunde_voll: true
+haustiere: pruefen
+selbstbehalt_reduktion: 14.90   # optional pro Buchung (1.500 € -> 300 €)
+klassen:
+  - id: golf_variant
+    name: Kompakt (VW Golf Variant)
+    familientauglich: true
+    stundenpreis: 6.90
+    tagespreis: 69.0
+    wochenpreis: null       # kein Wochenpreis bekannt -> Tagespreis × Tage
+    km_preis: 0.36
+    unverifiziert: []
+pauschalen:
+  - name: Wochenendtarif (Fr 7 – Mo 7)
+    art: wochenende
+    preis: 139.0            # Deckel für die Zeitkosten
+    frei_km: 50
+  - name: Sa/So-Tagesdeckel
+    art: sa_so_tag
+    preis: 49.0
+    frei_km: 20
+hinweise:
+  - Sa/So-Deckel wird nur angewendet, wenn die Buchung komplett an einem Samstag oder Sonntag liegt.
+  - Registrierung einmalig 8,90 € (mit BahnCard kostenlos) – nicht in der Fahrt enthalten.

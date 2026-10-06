@@ -1,0 +1,23 @@
+# Vorgaben für Optionen ohne feste Tariftabelle.
+# Preise werden pro Reise in der App eingetragen (Phase 2: automatisch per Fetcher).
+mietwagen:
+  - id: sixt
+    name: Sixt
+    link: https://www.sixt.de
+    haustiere: pruefen
+    verbrauch_l_100km: 6.5
+  - id: europcar
+    name: Europcar
+    link: https://www.europcar.de
+    haustiere: pruefen
+    verbrauch_l_100km: 6.5
+  - id: getaround
+    name: Getaround
+    link: https://de.getaround.com
+    haustiere: pruefen        # legt der Fahrzeughalter fest
+    verbrauch_l_100km: 6.0
+bahn:
+  id: bahn
+  name: Bahn
+  link: https://www.bahn.de
+  haustiere: ja               # Hund braucht je nach Größe ein eigenes Ticket
