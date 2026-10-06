@@ -1,0 +1,82 @@
+# Referenzprofile für ein eigenes Auto (Kombi, Familie mit Hund, Raum Kassel). Stand 2026-10-06.
+# fix_pro_jahr in €/Jahr, variabel_pro_km in €/km. Werte, die nur geschätzt sind, stehen unter
+# `unverifiziert` und werden in der App mit * markiert.
+#
+# Gemeinsame Quellen:
+#  - Haushaltsstrom 37,0 ct/kWh: BDEW-Strompreisanalyse Herbst 2026, https://www.bdew.de/service/daten-und-grafiken/bdew-strompreisanalyse/
+#  - Öffentliches Laden 2026: AC 55-57 ct, DC 67-75 ct/kWh (ADAC-Angabe laut Suchergebnis, https://www.ace.de/elektromobilitaet/laden-wallbox/ladepreise/)
+#  - Sprit Okt. 2026: Super E10 2,008 €/l, Diesel 1,997 €/l (ADAC-Auswertung, https://presse.adac.de/meldungen/adac-ev/verkehr/)
+#  - Kfz-Steuer E-Auto: befreit bei Erstzulassung bis 31.12.2030, längstens bis 31.12.2035,
+#    https://www.zoll.de/SharedDocs/Fachmeldungen/Aktuelle-Einzelmeldungen/2026/kfz_verlaengerung_steuerbefreiung_elektrofahrzeuge.html
+#    Gebrauchte E-Autos: Befreiung gilt ab der Erstzulassung weiter, Restlaufzeit je Fahrzeug unterschiedlich.
+typ: eigenauto
+profile:
+  - id: e-kombi-leasing
+    name: E-Kombi Leasing
+    quelle: https://www.carwow.de/volkswagen/id7-tourer/leasing
+    stand: "2026-10-06"
+    fix_pro_jahr:
+      # VW ID.7 Tourer Privatleasing, 36 Monate, 10.000 km/Jahr: 435 €/Monat, 3.000 € Anzahlung,
+      # 1.030 € Überführung, Gesamtbetrag 18.660 € -> 6.220 €/Jahr (carwow, siehe quelle).
+      # Achtung: Mehr als 10.000 km/Jahr kosten extra (nicht berücksichtigt).
+      rate_oder_wertverlust: 6220
+      # Versicherung ID.7 Tourer Pro ca. 140 €/Monat (Haftpflicht + Voll-/Teilkasko laut
+      # https://www.autokostencheck.de/unterhaltskosten-direktvergleich/kostenvergleich-skoda-enyaq-rs-ny-vw-id-7-tourer-pro-ed/4291203/)
+      versicherung: 1680
+      # E-Auto steuerbefreit (Zoll, siehe oben)
+      steuer: 0
+      # Eigene Schätzung: Inspektion alle 2 Jahre, Wischerblätter, Pollenfilter; ADAC nennt für den
+      # Enyaq 69 €/Monat Werkstatt inkl. Reifen (https://www.adac.de/rund-ums-fahrzeug/autokatalog/marken-modelle/skoda/enyaq/1generation-facelift/338054/)
+      wartung: 350
+    variabel_pro_km:
+      # 18 kWh/100 km (Alltag, Kombi mit Dachbox/Hund) x Mischpreis 0,46 €/kWh
+      # (60 % Haushaltsstrom 0,37 + 40 % öffentlich 0,60) = 0,083 €/km
+      energie: 0.083
+      # Eigene Schätzung: Reifen für E-Autos nutzen sich schneller ab (ca. 100 € je 3.000 km)
+      reifen_verschleiss: 0.03
+    hundetauglich: true
+    unverifiziert: [wartung, reifen_verschleiss, energie]
+
+  - id: e-kombi-gebraucht
+    name: E-Kombi gebraucht gekauft
+    quelle: https://www.adac.de/rund-ums-fahrzeug/autokatalog/marken-modelle/skoda/enyaq/1generation-facelift/338054/
+    stand: "2026-10-06"
+    fix_pro_jahr:
+      # Eigene Schätzung: ID.7 Tourer / vergleichbar, 2-3 Jahre alt, ca. 35.000 € Kaufpreis,
+      # Wertverlust ca. 10 %/Jahr. ADAC nennt für den neuen Enyaq 60 525 €/Monat (6.300 €/Jahr);
+      # gebraucht deutlich weniger, die Zahl ist nicht belegt.
+      rate_oder_wertverlust: 3500
+      # wie Leasing-Profil: ca. 140 €/Monat (autokostencheck.de, siehe dort)
+      versicherung: 1680
+      # E-Auto steuerbefreit; bei Gebrauchten verkürzt sich die Befreiung um die bisherige Laufzeit,
+      # bis 2035 aber kein Fall für ein Fahrzeug dieses Alters (Zoll, siehe oben)
+      steuer: 0
+      # Eigene Schätzung (Garantie läuft evtl. aus): Inspektion, Kleinreparaturen, TÜV
+      wartung: 600
+    variabel_pro_km:
+      energie: 0.083
+      reifen_verschleiss: 0.03
+    hundetauglich: true
+    unverifiziert: [rate_oder_wertverlust, wartung, reifen_verschleiss, energie]
+
+  - id: verbrenner-kombi-gebraucht
+    name: Verbrenner-Kombi gebraucht
+    quelle: https://www.fahrzeugschein.de/blog/artikel/was-kostet-ein-auto-im-monat
+    stand: "2026-10-06"
+    fix_pro_jahr:
+      # Eigene Schätzung: Skoda Octavia Combi 1.5 TSI, 3-5 Jahre alt, ca. 22.000 €, Wertverlust ca. 10 %/Jahr
+      rate_oder_wertverlust: 2200
+      # Haftpflicht + Teilkasko, Familie, ältere Fahrzeuge; Forenwert ca. 60 €/Monat
+      # (https://www.skodacommunity.de/threads/kosten-pro-kilometer-fuer-skoda-octavia-ii.114202/), aufgerundet
+      versicherung: 900
+      # Eigene Schätzung für 1.5 TSI (CO2- und Hubraumanteil)
+      steuer: 150
+      # Skoda-Forumswert ca. 98 €/Monat Wartung inkl. Reparaturen (skodacommunity.de, siehe oben), gerundet
+      wartung: 1100
+    variabel_pro_km:
+      # 6,0 l/100 km x 2,00 €/l (Super E10, ADAC Okt. 2026) = 0,12 €/km
+      energie: 0.12
+      # Eigene Schätzung: Reifen und Bremsen
+      reifen_verschleiss: 0.03
+    hundetauglich: true
+    unverifiziert: [rate_oder_wertverlust, steuer, wartung, reifen_verschleiss]
