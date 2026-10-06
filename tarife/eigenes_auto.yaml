@@ -17,9 +17,10 @@ profile:
     stand: "2026-10-06"
     fix_pro_jahr:
       # VW ID.7 Tourer Privatleasing, 36 Monate, 10.000 km/Jahr: 435 €/Monat, 3.000 € Anzahlung,
-      # 1.030 € Überführung, Gesamtbetrag 18.660 € -> 6.220 €/Jahr (carwow, siehe quelle).
+      # 1.030 € Überführung (carwow nennt 18.660 € Gesamtbetrag = 36 x 435 + 3.000, ohne Überführung).
+      # (15.660 + 3.000 + 1.030) / 3 Jahre = 6.563 €/Jahr (carwow, siehe quelle).
       # Achtung: Mehr als 10.000 km/Jahr kosten extra (nicht berücksichtigt).
-      rate_oder_wertverlust: 6220
+      rate_oder_wertverlust: 6563
       # Versicherung ID.7 Tourer Pro ca. 140 €/Monat (Haftpflicht + Voll-/Teilkasko laut
       # https://www.autokostencheck.de/unterhaltskosten-direktvergleich/kostenvergleich-skoda-enyaq-rs-ny-vw-id-7-tourer-pro-ed/4291203/)
       versicherung: 1680
@@ -48,8 +49,9 @@ profile:
       rate_oder_wertverlust: 3500
       # wie Leasing-Profil: ca. 140 €/Monat (autokostencheck.de, siehe dort)
       versicherung: 1680
-      # E-Auto steuerbefreit; bei Gebrauchten verkürzt sich die Befreiung um die bisherige Laufzeit,
-      # bis 2035 aber kein Fall für ein Fahrzeug dieses Alters (Zoll, siehe oben)
+      # E-Auto steuerbefreit: Die Befreiung läuft ab Erstzulassung maximal 10 Jahre, längstens bis
+      # 31.12.2035 (Zoll, siehe oben). Bei einem 2-3 Jahre alten Gebrauchten bleibt sie für den
+      # Haltezeitraum erhalten; Restlaufzeit vor dem Kauf prüfen.
       steuer: 0
       # Eigene Schätzung (Garantie läuft evtl. aus): Inspektion, Kleinreparaturen, TÜV
       wartung: 600
@@ -66,17 +68,20 @@ profile:
     fix_pro_jahr:
       # Eigene Schätzung: Skoda Octavia Combi 1.5 TSI, 3-5 Jahre alt, ca. 22.000 €, Wertverlust ca. 10 %/Jahr
       rate_oder_wertverlust: 2200
-      # Haftpflicht + Teilkasko, Familie, ältere Fahrzeuge; Forenwert ca. 60 €/Monat
-      # (https://www.skodacommunity.de/threads/kosten-pro-kilometer-fuer-skoda-octavia-ii.114202/), aufgerundet
+      # Eigene Schätzung für Haftpflicht + Teilkasko, Familie. Einziger Anhaltspunkt: Forenwert
+      # ca. 60 €/Monat für einen Octavia 2.0 TDI älterer Generation
+      # (https://www.skodacommunity.de/threads/kosten-pro-kilometer-fuer-skoda-octavia-ii.114202/), deshalb aufgerundet
       versicherung: 900
       # Eigene Schätzung für 1.5 TSI (CO2- und Hubraumanteil)
       steuer: 150
-      # Skoda-Forumswert ca. 98 €/Monat Wartung inkl. Reparaturen (skodacommunity.de, siehe oben), gerundet
+      # Eigene Schätzung. Anhaltspunkt: ca. 98 €/Monat Wartung im Forum (Octavia 2.0 TDI, ältere Generation,
+      # siehe oben), auf 1.100 €/Jahr gerundet
       wartung: 1100
     variabel_pro_km:
-      # 6,0 l/100 km x 2,00 €/l (Super E10, ADAC Okt. 2026) = 0,12 €/km
+      # Annahme 6,0 l/100 km (eigene Schätzung für Octavia Combi 1.5 TSI im Alltag, nicht belegt)
+      # x 2,00 €/l (Super E10, ADAC Okt. 2026, Preis belegt) = 0,12 €/km
       energie: 0.12
       # Eigene Schätzung: Reifen und Bremsen
       reifen_verschleiss: 0.03
     hundetauglich: true
-    unverifiziert: [rate_oder_wertverlust, steuer, wartung, reifen_verschleiss]
+    unverifiziert: [rate_oder_wertverlust, versicherung, steuer, wartung, energie, reifen_verschleiss]
