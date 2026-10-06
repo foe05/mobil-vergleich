@@ -39,7 +39,7 @@ def euro(betrag: float, stellen: int = 2) -> str:
 
 
 def zahl(wert: float, stellen: int = 1) -> str:
-    return f"{wert:.{stellen}f}".replace(".", ",")
+    return f"{wert:,.{stellen}f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
 def zeitpunkt(dt: datetime) -> str:
