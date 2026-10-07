@@ -4,7 +4,7 @@ from __future__ import annotations
 import math
 from datetime import datetime, timedelta
 
-from .modelle import BahnAngebot, Ergebnis, MietAngebot, Szenario
+from .modelle import BahnAngebot, Ergebnis, FreiesAngebot, MietAngebot, Szenario
 
 
 # ---------- Zeit ----------
@@ -136,10 +136,18 @@ def berechne_bahn(b: BahnAngebot) -> Ergebnis:
     )
 
 
+def berechne_frei(a: FreiesAngebot) -> Ergebnis:
+    return Ergebnis(
+        anbieter=a.beschreibung.strip() or "Freies Angebot", option="freies Angebot", gruppe="Sonstiges",
+        gesamt=round(a.preis_gesamt, 2), posten={"Gesamtpreis": a.preis_gesamt},
+        hinweise=["Preis manuell eingetragen"], haustiere="pruefen",
+    )
+
+
 # ---------- Alles zusammen ----------
 
 def vergleiche(tarife: dict, sz: Szenario, miet: list[MietAngebot],
-               bahn: BahnAngebot | None) -> list[Ergebnis]:
+               bahn: BahnAngebot | None, frei: FreiesAngebot | None = None) -> list[Ergebnis]:
     ergebnisse: list[Ergebnis] = []
     for t in tarife["carsharing"]:
         for k in t["klassen"]:
@@ -148,6 +156,8 @@ def vergleiche(tarife: dict, sz: Szenario, miet: list[MietAngebot],
     ergebnisse += [berechne_mietwagen(a, sz) for a in miet if a.preis_gesamt > 0]
     if bahn and bahn.preis_gesamt > 0:
         ergebnisse.append(berechne_bahn(bahn))
+    if frei and frei.preis_gesamt > 0:
+        ergebnisse.append(berechne_frei(frei))
     if sz.hund:
         ergebnisse = [e for e in ergebnisse if e.haustiere != "nein"]
     return sorted(ergebnisse, key=lambda e: e.gesamt)

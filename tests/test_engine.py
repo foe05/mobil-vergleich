@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from engine import Szenario, MietAngebot, BahnAngebot, lade_tarife, berechne_carsharing, vergleiche
+from engine import Szenario, MietAngebot, BahnAngebot, FreiesAngebot, lade_tarife, berechne_carsharing, berechne_frei, vergleiche
 from engine.berechnung import zeitkosten
 
 TARIFE = lade_tarife(Path(__file__).parent.parent / "tarife")
@@ -70,3 +70,21 @@ def test_vergleich_sortiert_und_filtert_hund():
     e = vergleiche(TARIFE, sz, miet, BahnAngebot(preis_gesamt=90))
     assert all(x.anbieter != "Kein-Hund-Vermieter" for x in e)
     assert [x.gesamt for x in e] == sorted(x.gesamt for x in e)
+
+
+def test_freies_angebot_in_rangliste():
+    sz = Szenario(datetime(2026, 10, 10, 9), datetime(2026, 10, 11, 9), km=100)
+    e = vergleiche({"carsharing": []}, sz, [], None, FreiesAngebot("Nachbar leiht uns den Bus", 40))
+    assert len(e) == 1
+    assert (e[0].anbieter, e[0].option, e[0].gruppe, e[0].gesamt) == \
+           ("Nachbar leiht uns den Bus", "freies Angebot", "Sonstiges", 40)
+    assert e[0].posten == {"Gesamtpreis": 40} and e[0].haustiere == "pruefen"
+
+
+def test_freies_angebot_ohne_preis_faellt_weg():
+    sz = Szenario(datetime(2026, 10, 10, 9), datetime(2026, 10, 11, 9), km=100)
+    assert vergleiche({"carsharing": []}, sz, [], None, FreiesAngebot("Bus", 0)) == []
+
+
+def test_freies_angebot_ohne_beschreibung():
+    assert berechne_frei(FreiesAngebot("  ", 25)).anbieter == "Freies Angebot"

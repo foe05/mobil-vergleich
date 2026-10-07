@@ -36,7 +36,8 @@ def verbindung() -> sqlite3.Connection | None:
 
 # Eingaben der Seite Vergleich, die einen Wechsel auf Fahrten/Auswertung überstehen sollen
 VERGLEICH_EINGABEN = ("preset", "start_d", "start_t", "ende_d", "ende_t", "km", "hund", "km_paket", "sb",
-                      "spritpreis", "bahn_preis", "bahn_vor_ort", "anlass", "wahl", "wahl_eigenauto")
+                      "spritpreis", "bahn_preis", "bahn_vor_ort", "frei_beschreibung", "frei_preis",
+                      "anlass", "wahl", "wahl_eigenauto")
 ANGEBOT_FELDER = ("preis", "frei", "mehr", "verbr", "extras")
 
 
@@ -74,8 +75,8 @@ PALETTEN = {
              "blass": "#77736A", "linie": "#3A3832", "spur": "#2C2B26"},
 }
 GRUPPENFARBEN = {
-    "light": {"Carsharing": "#1F5C3A", "Mietwagen": "#2E4A7D", "Bahn": "#A4492A"},
-    "dark": {"Carsharing": "#7CC49A", "Mietwagen": "#8FA8DA", "Bahn": "#E08B66"},
+    "light": {"Carsharing": "#1F5C3A", "Mietwagen": "#2E4A7D", "Bahn": "#A4492A", "Sonstiges": "#6E4E8C"},
+    "dark": {"Carsharing": "#7CC49A", "Mietwagen": "#8FA8DA", "Bahn": "#E08B66", "Sonstiges": "#C3A6E0"},
 }
 
 

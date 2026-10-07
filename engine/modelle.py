@@ -46,6 +46,13 @@ class BahnAngebot:
 
 
 @dataclass
+class FreiesAngebot:
+    """Beliebiges Angebot mit Freitext und Gesamtpreis inklusive allem."""
+    beschreibung: str
+    preis_gesamt: float
+
+
+@dataclass
 class Ergebnis:
     anbieter: str
     option: str

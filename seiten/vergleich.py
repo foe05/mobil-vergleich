@@ -7,7 +7,7 @@ from urllib.parse import quote, urlencode
 
 import streamlit as st
 
-from engine import NICHT_GEFAHREN, BahnAngebot, Eintrag, MietAngebot, Szenario, vergleiche
+from engine import NICHT_GEFAHREN, BahnAngebot, Eintrag, FreiesAngebot, MietAngebot, Szenario, vergleiche
 from seiten.gemeinsam import GRUPPENFARBEN, euro, modus, tarife, verbindung, zahl, zeitpunkt
 from speicher.fahrten import anlegen
 
@@ -132,9 +132,9 @@ miet: list[MietAngebot] = []
 mietwagen = T["angebote"].get("mietwagen", [])
 b = T["angebote"].get("bahn", {})
 
-with st.expander("Angebote eintragen – Sixt, Europcar, Getaround, Bahn"):
+with st.expander("Angebote eintragen – Sixt, Europcar, Getaround, Bahn, frei"):
     st.caption("Ohne Preis erscheint die Option nicht im Vergleich.")
-    reiter = st.tabs([m["name"] for m in mietwagen] + ["Bahn"])
+    reiter = st.tabs([m["name"] for m in mietwagen] + ["Bahn", "Frei"])
     for tab, m in zip(reiter, mietwagen):
         with tab:
             st.link_button(f"{m['name']} für diese Reise öffnen", suchlink(m, start, ende),
@@ -152,7 +152,7 @@ with st.expander("Angebote eintragen – Sixt, Europcar, Getaround, Bahn"):
                                          help="z. B. Reinigungspauschale wegen Hund, Zusatzfahrer")
             miet.append(MietAngebot(m["id"], m["name"], preis, frei, mehr, verbr, extras,
                                     m.get("haustiere", "pruefen")))
-    with reiter[-1]:
+    with reiter[-2]:
         st.link_button("Bahn für diese Reise öffnen", suchlink({"link": "https://www.bahn.de", **b}, start, ende),
                        icon=":material/open_in_new:")
         st.caption("Start und Reisezeit sind vorbelegt – Ziel und Reisende auf bahn.de ergänzen.")
@@ -160,10 +160,17 @@ with st.expander("Angebote eintragen – Sixt, Europcar, Getaround, Bahn"):
                                      min_value=0.0, step=5.0, key="bahn_preis")
         bahn_vor_ort = st.number_input("Mobilität am Ziel €", min_value=0.0, step=5.0, key="bahn_vor_ort")
     bahn = BahnAngebot(bahn_preis, bahn_vor_ort, b.get("haustiere", "ja"))
+    with reiter[-1]:
+        st.caption("Für alles andere – z. B. ein geliehenes Auto oder eine Mitfahrgelegenheit. "
+                   "Der Preis gilt als Endpreis, es wird nichts dazugerechnet.")
+        frei_beschreibung = st.text_input("Beschreibung", key="frei_beschreibung",
+                                          placeholder="z. B. Nachbar leiht uns den Bus")
+        frei_preis = st.number_input("Gesamtpreis €", min_value=0.0, step=5.0, key="frei_preis")
+    frei = FreiesAngebot(frei_beschreibung, frei_preis)
 
 # ---------- Ergebnis ----------
 
-ergebnisse = vergleiche(T, sz, miet, bahn)
+ergebnisse = vergleiche(T, sz, miet, bahn, frei)
 if not ergebnisse:
     st.info("Keine Option passt. Trag oben ein Angebot ein oder prüf die Annahmen.")
     st.stop()
