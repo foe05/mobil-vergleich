@@ -2,6 +2,7 @@ from .modelle import Szenario, Ergebnis, MietAngebot, BahnAngebot, FreiesAngebot
 from .berechnung import berechne_carsharing, berechne_mietwagen, berechne_bahn, berechne_frei, vergleiche
 from .eigenauto import Zeitraum, ZeitraumKosten, BreakEven, zeitraum, zeitraeume, zeitraumkosten, break_even, verlauf
 from .tarife import lade_tarife
+from .instanz import Instanz, Vorlage, lade_instanz, reisende_text, vorlage_zeiten
 
 __all__ = [
     "Szenario", "Ergebnis", "MietAngebot", "BahnAngebot", "FreiesAngebot",
@@ -10,4 +11,5 @@ __all__ = [
     "Zeitraum", "ZeitraumKosten", "BreakEven", "zeitraum", "zeitraeume", "zeitraumkosten",
     "break_even", "verlauf",
     "lade_tarife",
+    "Instanz", "Vorlage", "lade_instanz", "reisende_text", "vorlage_zeiten",
 ]

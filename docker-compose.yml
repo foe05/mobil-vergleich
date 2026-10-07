@@ -1,14 +1,19 @@
 # Läuft hinter dem Nginx Proxy Manager. Kein Port nach außen – NPM spricht den Container
-# über das gemeinsame Docker-Netzwerk an (Host: mobil-vergleich, Port: 8501).
+# über das gemeinsame Docker-Netzwerk an (Host: ${INSTANZ}, Port: 8501).
+# Weitere Instanzen: eigener Klon in einem anderen Ordner, INSTANZ und DATEN_VOLUME in dessen .env
+# setzen (siehe README „Zweite Instanz“). Ohne Angaben gelten die Werte der ersten Instanz.
 services:
   mobil-vergleich:
     build: .
-    container_name: mobil-vergleich
+    container_name: ${INSTANZ:-mobil-vergleich}
     restart: unless-stopped
     environment:
       - TZ=Europe/Berlin              # Uhrzeiten werden lokal eingegeben; "heute" und "Rechnung offen" danach
+      - TOOLLOG_API_KEY=${TOOLLOG_API_KEY:-}             # leer = kein Logging an tool-log
+      - TOOLLOG_API_URL=${TOOLLOG_API_URL:-http://tool-log-api:8000/api/log}
+      - TOOLLOG_INSTANZ=${TOOLLOG_INSTANZ:-${INSTANZ:-mobil-vergleich}}   # erscheint als "instance" im Log
     volumes:
-      - ./tarife:/app/tarife:ro       # Tarife ohne Rebuild anpassen
+      - ./tarife:/app/tarife:ro       # Tarife und instanz.yaml ohne Rebuild anpassen
       - mobil_daten:/app/daten        # SQLite mit Entscheidungen und Fahrten
     networks:
       - proxy
@@ -20,4 +25,4 @@ networks:
 
 volumes:
   mobil_daten:
-    name: mobil_daten
+    name: ${DATEN_VOLUME:-mobil_daten}

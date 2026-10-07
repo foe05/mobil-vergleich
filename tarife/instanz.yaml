@@ -1,0 +1,12 @@
+# Einstellungen dieser Instanz. Ohne diese Datei gelten genau diese Werte.
+# Änderungen wirken ohne Rebuild (Cache max. 5 Minuten bzw. Neuladen der Seite).
+ort: Kassel                  # erscheint in der Unterzeile
+personen: 4
+hund: true                   # Vorgabe für „Hund fährt mit“ und Texte wie „4 Personen und Hund“
+
+# Reise-Vorlagen (Chips oben): Start am nächsten start_tag (mo … so), Rückgabe `tage` später.
+vorlagen:
+  - {name: "IKEA-Nachmittag",   start_tag: sa, start: "13:00", tage: 0,  ende: "17:00", km: 30}
+  - {name: "Oma (1 Nacht)",     start_tag: sa, start: "10:00", tage: 1,  ende: "16:00", km: 100}
+  - {name: "Langes Wochenende", start_tag: fr, start: "14:00", tage: 3,  ende: "18:00", km: 700}
+  - {name: "Urlaub (2 Wochen)", start_tag: sa, start: "08:00", tage: 14, ende: "18:00", km: 1500}

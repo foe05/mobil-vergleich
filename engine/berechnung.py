@@ -130,7 +130,7 @@ def berechne_mietwagen(a: MietAngebot, sz: Szenario) -> Ergebnis:
 def berechne_bahn(b: BahnAngebot) -> Ergebnis:
     posten = {"Tickets": b.preis_gesamt, "Mobilität vor Ort": b.vor_ort}
     return Ergebnis(
-        anbieter="Bahn", option="Familie + Hund", gruppe="Bahn",
+        anbieter="Bahn", option=b.reisende, gruppe="Bahn",
         gesamt=round(sum(posten.values()), 2), posten=posten,
         hinweise=["Preis manuell eingetragen"], haustiere=b.haustiere,
     )

@@ -13,6 +13,7 @@ speicher/    SQLite-Zugriff für Entscheidungen und Fahrten
 seiten/      Streamlit-Seiten: Vergleich, Fahrten, Auswertung
 fetchers/    Phase 2: automatischer Abruf Sixt/Europcar (noch Platzhalter)
 app.py       Streamlit-Oberfläche
+telemetrie.py  Ereignisse an das zentrale Logging (tool-log)
 tests/       Tests gegen offizielle Preisbeispiele der Anbieter
 ```
 
@@ -21,7 +22,7 @@ tests/       Tests gegen offizielle Preisbeispiele der Anbieter
 ```bash
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt
-pytest -q                 # sollte 34 grüne Tests zeigen
+pytest -q                 # sollte 58 grüne Tests zeigen
 MOBIL_DB=./daten/mobil.db streamlit run app.py   # http://localhost:8501
 ```
 
@@ -49,11 +50,52 @@ ohne die Variable würde die App `/app/daten/mobil.db` verwenden, den Pfad im Co
 
 Die Daten liegen in SQLite im Docker-Volume `mobil_daten` (`/app/daten/mobil.db`, Pfad per
 Umgebungsvariable `MOBIL_DB`). Das Volume überlebt `docker compose up -d --build` und Neuanlegen
-des Containers; es heißt fest `mobil_daten`, unabhängig vom Compose-Projektnamen.
+des Containers; sein Name kommt aus `DATEN_VOLUME` in der `.env` (Standard `mobil_daten`),
+unabhängig vom Compose-Projektnamen.
 
 Die Profile für das eigene Auto stehen in `tarife/eigenes_auto.yaml`. Es gelten dieselben Regeln
 wie bei den Tarifen: jede Zahl mit `quelle` und `stand`, Geschätztes unter `unverifiziert`
 (in der App mit `*`). Auch hier reicht dank Volume-Mount ein Browser-Reload.
+
+## Instanz einstellen
+
+`tarife/instanz.yaml` legt fest, für wen die App rechnet: Ort, Zahl der Personen, ob ein Hund mitfährt
+(Vorgabe für „Hund fährt mit“ und Texte wie „4 Personen und Hund“) und die Reise-Vorlagen (Chips oben,
+Start am nächsten `start_tag`, Rückgabe `tage` später). Ohne die Datei gelten die Werte der ersten
+Instanz (Kassel, 4 Personen mit Hund). Fehlerhafte Einträge werden mit Hinweis übersprungen.
+
+## Zweite Instanz (getrennt, andere URL)
+
+Jede Instanz ist ein eigener Klon mit eigener `.env`, eigenen `tarife/` und eigenem Daten-Volume:
+
+```bash
+cd ~/docker-apps
+git clone https://github.com/foe05/mobil-vergleich mobil-vergleich-2
+cd mobil-vergleich-2
+cat > .env <<'ENV'
+PROXY_NETWORK=docker-apps_proxy
+INSTANZ=mobil-vergleich-2            # Containername = Forward Host im NPM
+DATEN_VOLUME=mobil_daten_2
+TOOLLOG_INSTANZ=mobil2.example.org   # Domain, erscheint im Logging
+TOOLLOG_API_KEY=                     # eigener Key in tool-log, leer = kein Logging
+ENV
+nano tarife/instanz.yaml             # Ort, Personen, Hund, Vorlagen
+docker compose up -d --build
+```
+
+Danach im NPM einen Proxy Host für die neue Domain auf `mobil-vergleich-2:8501` anlegen
+(Websockets an, SSL, Access List). Compose leitet den Projektnamen aus dem Ordner ab, die Instanzen
+teilen sich also weder Container noch Image noch Daten. Backup, Restore und Uptime-Kuma-Monitor
+für das neue Volume bzw. den neuen Container ergänzen.
+
+## Logging (tool-log)
+
+Jeder Vergleich und jede gespeicherte Entscheidung geht als Ereignis `vergleich` bzw. `entscheidung`
+an das zentrale Logging (`tool = mobil-vergleich`, `instance` = `TOOLLOG_INSTANZ`). Ein Vergleich wird
+pro Browser-Sitzung und Konstellation nur einmal gesendet. Gesendet wird im Hintergrund mit 2 s
+Timeout; fällt tool-log aus, steht nur eine Warnung im Container-Log. Ohne `TOOLLOG_API_KEY` in der
+`.env` ist das Logging aus. Inhalt: Reisezeit, km, Annahmen, Vorlage, eingetragene Angebote, Rangliste;
+bei Entscheidungen zusätzlich Anlass, Wahl und „Mit eigenem Auto?“.
 
 ## Tarife pflegen
 

@@ -3,12 +3,14 @@ from __future__ import annotations
 
 from datetime import datetime
 import json
+import logging
 from pathlib import Path
+import re
 import sqlite3
 
 import streamlit as st
 
-from engine import lade_tarife
+from engine import lade_instanz, lade_tarife
 from speicher.fahrten import db_pfad, oeffnen
 
 TARIF_ORDNER = Path(__file__).parent.parent / "tarife"
@@ -18,6 +20,29 @@ WOCHENTAGE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
 @st.cache_data(ttl=300)
 def tarife() -> dict:
     return lade_tarife(TARIF_ORDNER)
+
+
+@st.cache_data(ttl=300)
+def instanz():
+    """(Instanz, Hinweise) aus tarife/instanz.yaml; ohne Datei die Standardwerte."""
+    return lade_instanz(TARIF_ORDNER)
+
+
+log = logging.getLogger("mobil-vergleich")
+
+
+def fehler_melden(text: str, fehler: Exception) -> None:
+    """Kurze Meldung in der App, Einzelheiten (Pfade, Ausnahme) nur ins Container-Log."""
+    log.error("%s: %r", text, fehler)
+    st.error(f"{text} Bitte später erneut versuchen.")
+
+
+_MARKDOWN = re.compile(r"([\\`*_{}\[\]()#+\-.!|~:<>$])")
+
+
+def md_text(text: str) -> str:
+    """Freitext als reinen Text in Beschriftungen zeigen, die Streamlit als Markdown liest (Chips)."""
+    return _MARKDOWN.sub(r"\\\1", text)
 
 
 @st.cache_resource
@@ -30,7 +55,8 @@ def verbindung() -> sqlite3.Connection | None:
     try:
         return _verbindung()
     except (OSError, sqlite3.Error) as fehler:
-        st.error(f"Die Fahrten-Datenbank ist nicht erreichbar ({db_pfad()}): {fehler}")
+        fehler_melden("Die Fahrten-Datenbank ist nicht erreichbar.", fehler)
+        log.error("Datenbankpfad: %s", db_pfad())
         return None
 
 

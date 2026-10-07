@@ -40,9 +40,10 @@ class MietAngebot:
 
 @dataclass
 class BahnAngebot:
-    preis_gesamt: float                 # Familie + Hund, hin und zurück
+    preis_gesamt: float                 # alle Reisenden, hin und zurück
     vor_ort: float = 0.0                # Taxi/ÖPNV/Carsharing am Ziel
     haustiere: str = "ja"
+    reisende: str = "Familie + Hund"    # Beschriftung der Option in der Rangliste
 
 
 @dataclass

@@ -7,12 +7,18 @@ from urllib.parse import quote, urlencode
 
 import streamlit as st
 
-from engine import NICHT_GEFAHREN, BahnAngebot, Eintrag, FreiesAngebot, MietAngebot, Szenario, vergleiche
-from seiten.gemeinsam import GRUPPENFARBEN, euro, modus, tarife, verbindung, zahl, zeitpunkt
+from engine import (NICHT_GEFAHREN, BahnAngebot, Eintrag, FreiesAngebot, MietAngebot, Szenario, reisende_text,
+                    vergleiche, vorlage_zeiten)
+from seiten.gemeinsam import (GRUPPENFARBEN, euro, fehler_melden, instanz, md_text, modus, tarife, verbindung,
+                              zahl, zeitpunkt)
+import telemetrie
 from speicher.fahrten import anlegen
 
 HUND = {"ja": "Hund erlaubt", "nein": "Hund nicht erlaubt", "pruefen": "Hunderegel prüfen"}
 FARBEN = GRUPPENFARBEN[modus()]
+INSTANZ, INSTANZ_HINWEISE = instanz()
+TEXT_MAX = 200            # Zeichen je Freitextfeld
+EURO_MAX = 100_000.0      # Obergrenze für Preise, verhindert „inf €“ bei Unsinnseingaben
 
 
 def suchlink(anbieter: dict, start: datetime, ende: datetime) -> str:
@@ -51,19 +57,9 @@ def suchlink(anbieter: dict, start: datetime, ende: datetime) -> str:
 
 # ---------- Voreinstellungen ----------
 
-def naechster(wochentag: int) -> date:
-    heute = date.today()
-    return heute + timedelta(days=(wochentag - heute.weekday()) % 7 or 7)
-
-
 def voreinstellungen() -> dict:
-    sa, fr = naechster(5), naechster(4)
-    return {
-        "IKEA-Nachmittag": (sa, time(13), sa, time(17), 30),
-        "Oma (1 Nacht)": (sa, time(10), sa + timedelta(days=1), time(16), 100),
-        "Langes Wochenende": (fr, time(14), fr + timedelta(days=3), time(18), 700),
-        "Urlaub (2 Wochen)": (sa, time(8), sa + timedelta(days=14), time(18), 1500),
-    }
+    """Vorlagen aus instanz.yaml: Name -> (Abholung, um, Rückgabe, um, km)."""
+    return {v.name: vorlage_zeiten(v, date.today()) for v in INSTANZ.vorlagen}
 
 
 def setze_voreinstellung():
@@ -84,19 +80,25 @@ def eigene_eingabe():
 
 
 if "start_d" not in st.session_state:
-    st.session_state["preset"] = "Oma (1 Nacht)"
-    setze_voreinstellung()
+    vorlagen = list(voreinstellungen())
+    if vorlagen:   # zweite Vorlage wie bisher „Oma (1 Nacht)“, sonst die erste
+        st.session_state["preset"] = vorlagen[min(1, len(vorlagen) - 1)]
+        setze_voreinstellung()
+    else:
+        heute = date.today()
+        st.session_state.update(start_d=heute, start_t=time(10), ende_d=heute, ende_t=time(18), km=50)
 # Vorgaben über den Session State statt value=, damit die Werte den Seitenwechsel überstehen (app.py)
-for k, v in {"hund": True, "km_paket": True, "sb": False, "spritpreis": 1.75}.items():
+for k, v in {"hund": INSTANZ.hund, "km_paket": True, "sb": False, "spritpreis": 1.75}.items():
     st.session_state.setdefault(k, v)
 
 # ---------- Eingaben ----------
 
 st.title("Wie *fahren* wir?")
-st.html('<p class="unterzeile">Carsharing, Mietwagen oder Bahn – für vier Personen und Hund ab Kassel.</p>')
+st.html(f'<p class="unterzeile">Carsharing, Mietwagen oder Bahn – für {escape(reisende_text(INSTANZ))} '
+        f'ab {escape(INSTANZ.ort)}.</p>')
 
 st.pills("Reise", list(voreinstellungen()), key="preset", on_change=setze_voreinstellung,
-         label_visibility="collapsed")
+         label_visibility="collapsed", format_func=md_text)
 
 with st.container(horizontal=True, gap="small"):
     st.date_input("Abholung", key="start_d", format="DD.MM.YYYY", on_change=eigene_eingabe)
@@ -104,14 +106,15 @@ with st.container(horizontal=True, gap="small"):
 with st.container(horizontal=True, gap="small"):
     st.date_input("Rückgabe", key="ende_d", format="DD.MM.YYYY", on_change=eigene_eingabe)
     st.time_input("um ", key="ende_t", step=900, on_change=eigene_eingabe)
-st.number_input("Kilometer gesamt", min_value=0, step=10, key="km", on_change=eigene_eingabe)
+st.number_input("Kilometer gesamt", min_value=0, max_value=100_000, step=10, key="km", on_change=eigene_eingabe)
 
 with st.expander("Annahmen"):
     hund = st.toggle("Hund fährt mit", key="hund")
     km_paket = st.toggle("scouter 500-km-Paket nutzen", key="km_paket",
                          help="Restkilometer verfallen nicht – lohnt sich bei regelmäßiger Nutzung.")
     sb = st.toggle("Flinkster Selbstbehalt reduzieren", key="sb")
-    spritpreis = st.number_input("Spritpreis €/l", step=0.05, format="%.2f", key="spritpreis")
+    spritpreis = st.number_input("Spritpreis €/l", min_value=0.0, max_value=10.0, step=0.05, format="%.2f",
+                                 key="spritpreis")
 
 start = datetime.combine(st.session_state["start_d"], st.session_state["start_t"])
 ende = datetime.combine(st.session_state["ende_d"], st.session_state["ende_t"])
@@ -139,16 +142,16 @@ with st.expander("Angebote eintragen – Sixt, Europcar, Getaround, Bahn, frei")
         with tab:
             st.link_button(f"{m['name']} für diese Reise öffnen", suchlink(m, start, ende),
                            icon=":material/open_in_new:")
-            preis = st.number_input("Preis gesamt €", min_value=0.0, step=5.0, key=f"{m['id']}_preis")
+            preis = st.number_input("Preis gesamt €", min_value=0.0, max_value=EURO_MAX, step=5.0, key=f"{m['id']}_preis")
             with st.container(horizontal=True, gap="small"):
-                frei = st.number_input("Frei-km", min_value=0, step=50, key=f"{m['id']}_frei",
+                frei = st.number_input("Frei-km", min_value=0, max_value=100_000, step=50, key=f"{m['id']}_frei",
                                        help="0 = unbegrenzt")
-                mehr = st.number_input("Mehr-km €/km", min_value=0.0, step=0.05, format="%.2f",
+                mehr = st.number_input("Mehr-km €/km", min_value=0.0, max_value=10.0, step=0.05, format="%.2f",
                                        key=f"{m['id']}_mehr")
             st.session_state.setdefault(f"{m['id']}_verbr", float(m.get("verbrauch_l_100km", 6.5)))
             with st.container(horizontal=True, gap="small"):
-                verbr = st.number_input("l/100 km", min_value=0.0, step=0.5, key=f"{m['id']}_verbr")
-                extras = st.number_input("Extras €", min_value=0.0, step=5.0, key=f"{m['id']}_extras",
+                verbr = st.number_input("l/100 km", min_value=0.0, max_value=50.0, step=0.5, key=f"{m['id']}_verbr")
+                extras = st.number_input("Extras €", min_value=0.0, max_value=EURO_MAX, step=5.0, key=f"{m['id']}_extras",
                                          help="z. B. Reinigungspauschale wegen Hund, Zusatzfahrer")
             miet.append(MietAngebot(m["id"], m["name"], preis, frei, mehr, verbr, extras,
                                     m.get("haustiere", "pruefen")))
@@ -156,17 +159,18 @@ with st.expander("Angebote eintragen – Sixt, Europcar, Getaround, Bahn, frei")
         st.link_button("Bahn für diese Reise öffnen", suchlink({"link": "https://www.bahn.de", **b}, start, ende),
                        icon=":material/open_in_new:")
         st.caption("Start und Reisezeit sind vorbelegt – Ziel und Reisende auf bahn.de ergänzen.")
-        bahn_preis = st.number_input("Tickets gesamt € – Familie und Hund, hin und zurück",
-                                     min_value=0.0, step=5.0, key="bahn_preis")
-        bahn_vor_ort = st.number_input("Mobilität am Ziel €", min_value=0.0, step=5.0, key="bahn_vor_ort")
-    bahn = BahnAngebot(bahn_preis, bahn_vor_ort, b.get("haustiere", "ja"))
+        bahn_preis = st.number_input(f"Tickets gesamt € – {reisende_text(INSTANZ)}, hin und zurück",
+                                     min_value=0.0, max_value=EURO_MAX, step=5.0, key="bahn_preis")
+        bahn_vor_ort = st.number_input("Mobilität am Ziel €", min_value=0.0, max_value=EURO_MAX, step=5.0,
+                                       key="bahn_vor_ort")
+    bahn = BahnAngebot(bahn_preis, bahn_vor_ort, b.get("haustiere", "ja"), reisende_text(INSTANZ))
     with reiter[-1]:
         st.caption("Für alles andere – z. B. ein geliehenes Auto oder eine Mitfahrgelegenheit. "
                    "Der Preis gilt als Endpreis, es wird nichts dazugerechnet.")
-        frei_beschreibung = st.text_input("Beschreibung", key="frei_beschreibung",
+        frei_beschreibung = st.text_input("Beschreibung", key="frei_beschreibung", max_chars=TEXT_MAX,
                                           placeholder="z. B. Nachbar leiht uns den Bus")
-        frei_preis = st.number_input("Gesamtpreis €", min_value=0.0, step=5.0, key="frei_preis")
-    frei = FreiesAngebot(frei_beschreibung, frei_preis)
+        frei_preis = st.number_input("Gesamtpreis €", min_value=0.0, max_value=EURO_MAX, step=5.0, key="frei_preis")
+    frei = FreiesAngebot(frei_beschreibung[:TEXT_MAX], frei_preis)   # Grenze auch serverseitig
 
 # ---------- Ergebnis ----------
 
@@ -174,6 +178,12 @@ ergebnisse = vergleiche(T, sz, miet, bahn, frei)
 if not ergebnisse:
     st.info("Keine Option passt. Trag oben ein Angebot ein oder prüf die Annahmen.")
     st.stop()
+
+angebote = {m.id: m.preis_gesamt for m in miet if m.preis_gesamt > 0}
+angebote |= {k: v for k, v in (("bahn", bahn.preis_gesamt), ("frei", frei.preis_gesamt)) if v > 0}
+daten = telemetrie.vergleich_daten(sz, st.session_state.get("preset"), angebote, ergebnisse)
+if telemetrie.neu_in_sitzung(st.session_state, "vergleich", daten):
+    telemetrie.senden("vergleich", daten)
 
 beste = ergebnisse[0]
 abstand = ""
@@ -215,6 +225,8 @@ fuss = " · ".join(f'<a href="{escape(t["quelle"])}">{escape(t["name"])}</a>: St
                   for t in T["carsharing"])
 stern = "* enthält nicht bestätigte Tarifwerte. " if any(e.unsicher for e in ergebnisse) else ""
 st.html(f'<p class="fuss">{stern}Tarife: {fuss}. Einmalkosten wie Registrierung sind nicht enthalten.</p>')
+for h in INSTANZ_HINWEISE:
+    st.caption(h)
 
 
 # ---------- Entscheidung festhalten ----------
@@ -238,14 +250,14 @@ st.subheader("Entscheidung festhalten", anchor=False)
 con = verbindung()
 if con is not None:
     nach_name = {f"{e.anbieter} · {e.option}": e for e in ergebnisse}
-    wahl = st.pills("Gefahren mit", [*nach_name, NICHT_GEFAHREN], key="wahl")
+    wahl = st.pills("Gefahren mit", [*nach_name, NICHT_GEFAHREN], key="wahl", format_func=md_text)
     if "anlass" not in st.session_state:
         st.session_state["anlass"] = anlass_aus(st.session_state.get("preset"))
-    anlass = st.text_input("Anlass", key="anlass")
+    anlass = st.text_input("Anlass", key="anlass", max_chars=TEXT_MAX)
     eigen = st.segmented_control("Mit eigenem Auto?", list(EIGENAUTO), key="wahl_eigenauto")
 
     gewaehlt = nach_name.get(wahl)
-    eintrag = Eintrag(start=start, ende=ende, anlass=anlass.strip(), ergebnis=wahl or "",
+    eintrag = Eintrag(start=start, ende=ende, anlass=anlass.strip()[:TEXT_MAX], ergebnis=wahl or "",
                       gruppe=gewaehlt.gruppe if gewaehlt else "keine", km_geplant=sz.km,
                       preis_geplant=gewaehlt.gesamt if gewaehlt else 0.0,
                       eigenauto_gefahren=EIGENAUTO.get(eigen, False))
@@ -259,8 +271,9 @@ if con is not None:
             eintrag.vergleich = schnappschuss()
             anlegen(con, eintrag)
         except Exception as fehler:   # sqlite, Platte voll, schreibgeschützt …
-            st.error(f"Speichern fehlgeschlagen: {fehler}")
+            fehler_melden("Speichern fehlgeschlagen.", fehler)
         else:
+            telemetrie.senden("entscheidung", telemetrie.entscheidung_daten(eintrag))
             st.session_state["gespeichert"] = fingerabdruck
             st.session_state["toast"] = True
             st.rerun()   # Knopf zeigt danach „Gespeichert“ und ist gesperrt

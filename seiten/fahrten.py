@@ -9,7 +9,7 @@ import streamlit as st
 
 from engine import Eintrag
 from engine.eigenauto import MONATE
-from seiten.gemeinsam import GRUPPENFARBEN, euro, modus, verbindung, zahl, zeitpunkt
+from seiten.gemeinsam import GRUPPENFARBEN, euro, fehler_melden, modus, verbindung, zahl, zeitpunkt
 from speicher.fahrten import aendern, alle, anlegen, loeschen
 
 FARBEN = GRUPPENFARBEN[modus()]
@@ -26,12 +26,12 @@ def kosten_eintragen(con) -> None:
     with st.container(horizontal=True, gap="small"):
         ed = st.date_input("Rückgabe", value=heute, format="DD.MM.YYYY", key="neu_ed")
         et = st.time_input("um ", value=time(12), step=900, key="neu_et")
-    anlass = st.text_input("Anlass", key="neu_anlass")
+    anlass = st.text_input("Anlass", key="neu_anlass", max_chars=200)
     art = st.pills("Art", ARTEN, default="Sonstiges", key="neu_art")
-    anbieter = st.text_input("Anbieter", key="neu_anbieter", placeholder="z. B. Taxi Kassel")
+    anbieter = st.text_input("Anbieter", key="neu_anbieter", placeholder="z. B. Taxi Kassel", max_chars=200)
     with st.container(horizontal=True, gap="small"):
-        km = st.number_input("Kilometer", min_value=0.0, step=10.0, key="neu_km")
-        betrag = st.number_input("Betrag €", min_value=0.0, step=5.0, format="%.2f", key="neu_betrag")
+        km = st.number_input("Kilometer", min_value=0.0, max_value=100_000.0, step=10.0, key="neu_km")
+        betrag = st.number_input("Betrag €", min_value=0.0, max_value=100_000.0, step=5.0, format="%.2f", key="neu_betrag")
     eigen = st.segmented_control("Mit eigenem Auto?", list(EIGENAUTO), key="neu_eigen")
 
     if st.button("Speichern", type="primary", key="neu_speichern"):
@@ -46,12 +46,12 @@ def kosten_eintragen(con) -> None:
             st.error("Bitte eine Art wählen.")
         else:
             try:
-                anlegen(con, Eintrag(start=start, ende=ende, anlass=anlass.strip(), ergebnis=anbieter.strip(),
+                anlegen(con, Eintrag(start=start, ende=ende, anlass=anlass.strip()[:200], ergebnis=anbieter.strip()[:200],
                                      gruppe=art, km_geplant=km, preis_geplant=betrag,
                                      eigenauto_gefahren=EIGENAUTO[eigen],
                                      km_tatsaechlich=km, preis_tatsaechlich=betrag))
             except Exception as fehler:
-                st.error(f"Speichern fehlgeschlagen: {fehler}")
+                fehler_melden("Speichern fehlgeschlagen.", fehler)
             else:
                 for k in [k for k in st.session_state if k.startswith("neu_")]:
                     del st.session_state[k]
@@ -99,27 +99,27 @@ def rangliste(e: Eintrag) -> str:
 
 def details(con, e: Eintrag) -> None:
     with st.expander("Ändern, Nachtragen, Vergleich, Löschen", key=f"ex_{e.id}"):
-        anlass = st.text_input("Anlass", value=e.anlass, key=f"anlass_{e.id}")
+        anlass = st.text_input("Anlass", value=e.anlass, key=f"anlass_{e.id}", max_chars=200)
         eigen = st.segmented_control("Mit eigenem Auto?", list(EIGENAUTO), key=f"eigen_{e.id}",
                                      default="wäre gefahren" if e.eigenauto_gefahren else "nicht gefahren")
         if st.button("Ändern", key=f"aendern_{e.id}", disabled=eigen is None):
             try:
-                aendern(con, replace(e, anlass=anlass.strip(), eigenauto_gefahren=EIGENAUTO[eigen]))
+                aendern(con, replace(e, anlass=anlass.strip()[:200], eigenauto_gefahren=EIGENAUTO[eigen]))
             except Exception as fehler:
-                st.error(f"Speichern fehlgeschlagen: {fehler}")
+                fehler_melden("Speichern fehlgeschlagen.", fehler)
             else:
                 st.rerun()
         st.divider()
         with st.container(horizontal=True, gap="small"):
-            preis = st.number_input("Tatsächlicher Preis €", min_value=0.0, step=1.0, format="%.2f",
+            preis = st.number_input("Tatsächlicher Preis €", min_value=0.0, max_value=100_000.0, step=1.0, format="%.2f",
                                     value=float(e.preis), key=f"preis_{e.id}")
-            km = st.number_input("Tatsächliche km", min_value=0.0, step=10.0,
+            km = st.number_input("Tatsächliche km", min_value=0.0, max_value=100_000.0, step=10.0,
                                  value=float(e.km), key=f"km_{e.id}")
         if st.button("Nachtragen", key=f"nachtragen_{e.id}"):
             try:
                 aendern(con, replace(e, preis_tatsaechlich=preis, km_tatsaechlich=km))
             except Exception as fehler:
-                st.error(f"Speichern fehlgeschlagen: {fehler}")
+                fehler_melden("Speichern fehlgeschlagen.", fehler)
             else:
                 st.rerun()
         html = rangliste(e)
@@ -132,7 +132,7 @@ def details(con, e: Eintrag) -> None:
             try:
                 loeschen(con, e.id)
             except Exception as fehler:
-                st.error(f"Löschen fehlgeschlagen: {fehler}")
+                fehler_melden("Löschen fehlgeschlagen.", fehler)
             else:
                 st.rerun()
 
