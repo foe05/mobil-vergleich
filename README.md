@@ -91,8 +91,10 @@ für das neue Volume bzw. den neuen Container ergänzen.
 ## Logging (tool-log)
 
 Jeder Vergleich und jede gespeicherte Entscheidung geht als Ereignis `vergleich` bzw. `entscheidung`
-an das zentrale Logging (`tool = mobil-vergleich`, `instance` = `TOOLLOG_INSTANZ`). Ein Vergleich wird
-pro Browser-Sitzung und Konstellation nur einmal gesendet. Gesendet wird im Hintergrund mit 2 s
+an das zentrale Logging (`tool = mobil-vergleich`, `instance` = `TOOLLOG_INSTANZ`). Weil Streamlit bei
+jeder Eingabe neu rechnet, geht ein Vergleich erst ins Log, wenn er 10 Minuten unverändert blieb
+(`RUHEZEIT_S` in `telemetrie.py`), und zwar mit dem letzten Stand; wird vorher eine Entscheidung
+gespeichert, sofort. Ein Neustart des Containers in diesen 10 Minuten verwirft den offenen Stand. Gesendet wird im Hintergrund mit 2 s
 Timeout; fällt tool-log aus, steht nur eine Warnung im Container-Log. Ohne `TOOLLOG_API_KEY` in der
 `.env` ist das Logging aus. Inhalt: Reisezeit, km, Annahmen, Vorlage, eingetragene Angebote, Rangliste;
 bei Entscheidungen zusätzlich Anlass, Wahl und „Mit eigenem Auto?“.

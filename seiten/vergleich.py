@@ -4,6 +4,7 @@ from __future__ import annotations
 from datetime import date, datetime, time, timedelta
 from html import escape
 from urllib.parse import quote, urlencode
+import uuid
 
 import streamlit as st
 
@@ -182,8 +183,8 @@ if not ergebnisse:
 angebote = {m.id: m.preis_gesamt for m in miet if m.preis_gesamt > 0}
 angebote |= {k: v for k, v in (("bahn", bahn.preis_gesamt), ("frei", frei.preis_gesamt)) if v > 0}
 daten = telemetrie.vergleich_daten(sz, st.session_state.get("preset"), angebote, ergebnisse)
-if telemetrie.neu_in_sitzung(st.session_state, "vergleich", daten):
-    telemetrie.senden("vergleich", daten)
+sitzung = st.session_state.setdefault("_telemetrie_sitzung", uuid.uuid4().hex)
+telemetrie.entpreller.melden(sitzung, daten)
 
 beste = ergebnisse[0]
 abstand = ""
@@ -273,6 +274,7 @@ if con is not None:
         except Exception as fehler:   # sqlite, Platte voll, schreibgeschützt …
             fehler_melden("Speichern fehlgeschlagen.", fehler)
         else:
+            telemetrie.entpreller.abschliessen(sitzung)   # Vergleich steht im Log vor der Entscheidung
             telemetrie.senden("entscheidung", telemetrie.entscheidung_daten(eintrag))
             st.session_state["gespeichert"] = fingerabdruck
             st.session_state["toast"] = True

@@ -3,6 +3,7 @@ from datetime import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import json
 import threading
+import time
 
 import pytest
 
@@ -34,12 +35,82 @@ def test_entscheidung_daten():
         "km_geplant": 100, "eigenauto_gefahren": True}
 
 
-def test_nur_einmal_pro_sitzung():
-    sitzung = {}
-    assert telemetrie.neu_in_sitzung(sitzung, "vergleich", {"km": 100})
-    assert not telemetrie.neu_in_sitzung(sitzung, "vergleich", {"km": 100})
-    assert telemetrie.neu_in_sitzung(sitzung, "vergleich", {"km": 120})
-    assert telemetrie.neu_in_sitzung(sitzung, "entscheidung", {"km": 100})   # andere Ereignisart zählt extra
+class Mitschrift:
+    """Ersatz für senden(): merkt sich, was wann rausgeht."""
+    def __init__(self):
+        self.gesendet = []
+        self.da = threading.Event()
+
+    def __call__(self, event, daten):
+        self.gesendet.append((event, daten))
+        self.da.set()
+
+
+def test_nur_der_letzte_stand_nach_der_ruhezeit():
+    m = Mitschrift()
+    e = telemetrie.Entpreller(0.2, m)
+    for km in (100, 120, 140):          # Eingaben im Sekundentakt -> ein Vergleich
+        e.melden("s1", {"km": km})
+    assert m.gesendet == []
+    assert m.da.wait(2)
+    time.sleep(0.3)
+    assert m.gesendet == [("vergleich", {"km": 140})]
+
+
+def test_jede_eingabe_verschiebt_den_zeitpunkt():
+    m = Mitschrift()
+    e = telemetrie.Entpreller(0.3, m)
+    e.melden("s1", {"km": 100})
+    time.sleep(0.2)
+    e.melden("s1", {"km": 120})
+    time.sleep(0.2)                      # 0,4 s nach der ersten, aber erst 0,2 s nach der letzten Eingabe
+    assert m.gesendet == []
+    assert m.da.wait(2)
+    assert m.gesendet == [("vergleich", {"km": 120})]
+
+
+def test_gleicher_stand_verschiebt_nicht():
+    m = Mitschrift()
+    e = telemetrie.Entpreller(0.3, m)
+    e.melden("s1", {"km": 100})
+    time.sleep(0.2)
+    e.melden("s1", {"km": 100})          # Rerun ohne Änderung, z. B. Klick auf „Speichern“-Auswahl
+    assert m.da.wait(0.25)
+
+
+def test_abschliessen_sendet_sofort_und_nur_einmal():
+    m = Mitschrift()
+    e = telemetrie.Entpreller(0.2, m)
+    e.melden("s1", {"km": 100})
+    e.abschliessen("s1")                 # vor der Entscheidung
+    assert m.gesendet == [("vergleich", {"km": 100})]
+    time.sleep(0.4)
+    e.abschliessen("s1")
+    assert len(m.gesendet) == 1
+
+
+def test_schon_gesendeter_stand_kommt_nicht_nochmal():
+    m = Mitschrift()
+    e = telemetrie.Entpreller(0.1, m)
+    e.melden("s1", {"km": 100})
+    e.abschliessen("s1")
+    e.melden("s1", {"km": 120})          # kurz verstellt …
+    e.melden("s1", {"km": 100})          # … und zurück auf den gesendeten Stand
+    time.sleep(0.3)
+    assert m.gesendet == [("vergleich", {"km": 100})]
+
+
+def test_sitzungen_getrennt():
+    m = Mitschrift()
+    e = telemetrie.Entpreller(0.1, m)
+    e.melden("s1", {"km": 100})
+    e.melden("s2", {"km": 100})
+    time.sleep(0.4)
+    assert len(m.gesendet) == 2
+
+
+def test_ruhezeit_zehn_minuten():
+    assert telemetrie.RUHEZEIT_S == 600
 
 
 def test_ohne_api_key_wird_nichts_gesendet(monkeypatch):

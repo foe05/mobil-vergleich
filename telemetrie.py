@@ -10,14 +10,14 @@ import logging
 import os
 import threading
 import urllib.request
-from collections.abc import MutableMapping
 
 from engine import Eintrag, Ergebnis, Szenario
 
 TOOL = "mobil-vergleich"
-VERSION = "1.2.0"
+VERSION = "1.2.1"
 STANDARD_URL = "http://tool-log-api:8000/api/log"
 TIMEOUT_S = 2
+RUHEZEIT_S = 600   # so lange muss ein Vergleich unverändert bleiben, bevor er ins Log geht
 
 log = logging.getLogger(__name__)
 
@@ -42,14 +42,51 @@ def entscheidung_daten(e: Eintrag) -> dict:
             "eigenauto_gefahren": e.eigenauto_gefahren}
 
 
-def neu_in_sitzung(sitzung: MutableMapping, event: str, daten: dict) -> bool:
-    """True beim ersten Mal je Ereignis und Inhalt in dieser Sitzung – Streamlit rechnet bei jeder Eingabe neu."""
-    fingerabdruck = hashlib.sha256(json.dumps([event, daten], sort_keys=True, default=str).encode()).hexdigest()
-    gesendet = sitzung.setdefault("_telemetrie_gesendet", set())
-    if fingerabdruck in gesendet:
-        return False
-    gesendet.add(fingerabdruck)
-    return True
+def _fingerabdruck(daten: dict) -> str:
+    return hashlib.sha256(json.dumps(daten, sort_keys=True, default=str).encode()).hexdigest()
+
+
+class Entpreller:
+    """Ein Vergleich je Planung: Streamlit rechnet bei jeder Eingabe neu, gesendet wird erst der Stand,
+    der `ruhezeit` Sekunden unverändert blieb. Läuft im Server, kommt also auch bei geschlossenem Tab an;
+    ein Neustart des Containers in der Ruhezeit verwirft den offenen Stand."""
+
+    def __init__(self, ruhezeit: float, senden_fn):
+        self.ruhezeit = ruhezeit
+        self.senden_fn = senden_fn
+        self._sperre = threading.Lock()
+        self._offen: dict[str, tuple[str, dict, threading.Timer]] = {}   # Sitzung -> Fingerabdruck, Daten, Timer
+        self._gesendet: dict[str, str] = {}                             # Sitzung -> zuletzt gesendeter Fingerabdruck
+
+    def melden(self, sitzung: str, daten: dict) -> None:
+        fp = _fingerabdruck(daten)
+        with self._sperre:
+            offen = self._offen.get(sitzung)
+            if offen and offen[0] == fp:          # Rerun ohne Änderung verschiebt nichts
+                return
+            if offen:
+                offen[2].cancel()
+                del self._offen[sitzung]
+            if self._gesendet.get(sitzung) == fp:  # zurück auf den schon gesendeten Stand
+                return
+            timer = threading.Timer(self.ruhezeit, self._faellig, args=(sitzung, fp))
+            timer.daemon = True
+            self._offen[sitzung] = (fp, daten, timer)
+            timer.start()
+
+    def abschliessen(self, sitzung: str) -> None:
+        """Offenen Stand sofort senden, z. B. bevor die Entscheidung dazu gespeichert wird."""
+        self._faellig(sitzung, None)
+
+    def _faellig(self, sitzung: str, fp: str | None) -> None:
+        with self._sperre:
+            offen = self._offen.get(sitzung)
+            if not offen or (fp is not None and offen[0] != fp):   # inzwischen ersetzt
+                return
+            offen[2].cancel()
+            del self._offen[sitzung]
+            self._gesendet[sitzung] = offen[0]
+        self.senden_fn("vergleich", offen[1])
 
 
 def _post(url: str, schluessel: str, nachricht: dict) -> None:
@@ -73,3 +110,6 @@ def senden(event: str, daten: dict) -> threading.Thread | None:
                                                  nachricht), daemon=True)
     faden.start()
     return faden
+
+
+entpreller = Entpreller(RUHEZEIT_S, lambda event, daten: senden(event, daten))
