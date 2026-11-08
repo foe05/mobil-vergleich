@@ -18,6 +18,31 @@ services:
     networks:
       - proxy
 
+  # Schnittstelle für den Chief of Staff (README „Schnittstelle für den CoS“). Nur vom Host aus erreichbar
+  # (127.0.0.1), im Proxy-Netz nur wegen tool-log – in NPM keinen Proxy-Host dafür anlegen.
+  mobil-api:
+    build: .
+    container_name: ${INSTANZ:-mobil-vergleich}-api
+    restart: unless-stopped
+    command: ["python", "-m", "schnittstelle"]
+    ports:
+      - "127.0.0.1:${API_PORT:-8502}:8502"
+    environment:
+      - TZ=Europe/Berlin
+      - MOBIL_API_KEY=${MOBIL_API_KEY:-}               # leer = Schnittstelle antwortet nur mit 503
+      - TOOLLOG_API_KEY=${TOOLLOG_API_KEY:-}
+      - TOOLLOG_API_URL=${TOOLLOG_API_URL:-http://tool-log-api:8000/api/log}
+      - TOOLLOG_INSTANZ=${TOOLLOG_INSTANZ:-${INSTANZ:-mobil-vergleich}}
+    volumes:
+      - ./tarife:/app/tarife:ro
+      - mobil_daten:/app/daten
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8502/lebt')"]
+      interval: 60s
+      timeout: 5s
+    networks:
+      - proxy
+
 networks:
   proxy:
     external: true

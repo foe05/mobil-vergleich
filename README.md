@@ -10,6 +10,7 @@ scouter, Flinkster, Sixt, Europcar, Getaround und Bahn für typische Reisen
 tarife/      YAML je Anbieter und Eigenauto-Profile – hier werden Preise gepflegt
 engine/      Preislogik und Auswertung (reine Python-Funktionen, getestet)
 speicher/    SQLite-Zugriff für Entscheidungen und Fahrten
+schnittstelle/  JSON-Schnittstelle für den Chief of Staff (eigener Compose-Dienst mobil-api)
 seiten/      Streamlit-Seiten: Vergleich, Fahrten, Auswertung
 fetchers/    Phase 2: automatischer Abruf Sixt/Europcar (noch Platzhalter)
 app.py       Streamlit-Oberfläche
@@ -22,7 +23,7 @@ tests/       Tests gegen offizielle Preisbeispiele der Anbieter
 ```bash
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt
-pytest -q                 # sollte 58 grüne Tests zeigen
+pytest -q                 # alle Tests grün
 MOBIL_DB=./daten/mobil.db streamlit run app.py   # http://localhost:8501
 ```
 
@@ -87,6 +88,33 @@ Danach im NPM einen Proxy Host für die neue Domain auf `mobil-vergleich-2:8501`
 (Websockets an, SSL, Access List). Compose leitet den Projektnamen aus dem Ordner ab, die Instanzen
 teilen sich also weder Container noch Image noch Daten. Backup, Restore und Uptime-Kuma-Monitor
 für das neue Volume bzw. den neuen Container ergänzen.
+
+## Schnittstelle für den CoS
+
+Der Chief of Staff bedient die App über eine kleine JSON-Schnittstelle: Vergleich mit Angeboten,
+Entscheidung speichern, Rechnung nachtragen, Auswertung. Sie läuft als zweiter Compose-Dienst
+`mobil-api` (gleiches Image, gleiche Datenbank) und ist **nur vom Host** erreichbar:
+`127.0.0.1:8502` (anderer Port über `API_PORT` in `.env`). In NPM keinen Proxy Host dafür anlegen.
+
+Einrichten:
+1. Schlüssel erzeugen: `openssl rand -hex 32`
+2. In `.env` eintragen: `MOBIL_API_KEY=<schlüssel>` – derselbe Wert gehört beim CoS in `secrets.env`.
+3. `docker compose up -d --build`
+
+Ohne Schlüssel (oder kürzer als 32 Zeichen) antwortet die Schnittstelle nur auf `GET /lebt`, alles
+andere mit 503. Jeder Aufruf braucht `Authorization: Bearer <MOBIL_API_KEY>`; protokolliert werden nur
+Methode, Pfad, Status und Dauer.
+
+| Aufruf | Wirkung |
+|---|---|
+| `POST /vergleich` | Rangliste und Suchlinks für eine Reise (`start`, `ende` als `JJJJ-MM-TTTHH:MM`, `km`, optional `hund`, `spritpreis`, `km_paket`, `selbstbehalt_reduzieren`, `angebote`) |
+| `POST /fahrten` | Entscheidung speichern: Reise + `wahl` (Beschriftung aus der Rangliste oder `nicht gefahren`), `eigenes_auto`, `anlass`; doppelt → 409 |
+| `GET /fahrten?offen=1&anzahl=20` | Fahrten, neueste zuerst; `offen=1` nur mit offener Rechnung |
+| `PATCH /fahrten/<id>` | nur `preis_tatsaechlich` und optional `km_tatsaechlich` |
+| `GET /auswertung?zeitraum=quartal&datum=JJJJ-MM-TT` | Kosten je Profil und Break-even-Satz |
+
+Löschen, Tarife ändern oder Dateien lesen kann die Schnittstelle nicht. Die App lässt sich per Link
+vorbelegen: `/?start=2026-11-14T10:00&ende=2026-11-15T16:00&km=100&hund=1&anlass=Oma`.
 
 ## Logging (tool-log)
 
