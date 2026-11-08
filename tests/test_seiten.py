@@ -82,3 +82,20 @@ def test_vergleich_link_unsinn_faellt_auf_vorlage(db):
     at.run()
     assert fehler(at) == []
     assert at.session_state["preset"] == "Oma (1 Nacht)"
+
+
+def test_fahrten_nachtragen_ueberschreibt_cos_rechnung_nicht(db):
+    """Befund Abschlussprüfung 1: offene Seite, CoS trägt 79,10 € nach, App korrigiert nur km."""
+    from speicher.fahrten import rechnung_nachtragen
+    s = datetime(2026, 9, 1, 10)
+    anlegen(db, Eintrag(s, s + timedelta(hours=8), "Oma", "scouter · M", "Carsharing", 100, 82.4, True))
+    e = alle(db)[0]
+    at = AppTest.from_file(str(WURZEL / "seiten" / "fahrten.py"), default_timeout=30).run()
+    rechnung_nachtragen(db, e.id, 79.1, None)            # Schreiben über die Schnittstelle
+    at.run()                                             # nächster Rerun der offenen Seite
+    km = next(n for n in at.number_input if n.key.startswith(f"km_{e.id}"))
+    km.set_value(96.0)
+    next(b for b in at.button if b.key == f"nachtragen_{e.id}").click().run()
+    assert fehler(at) == []
+    neu = alle(db)[0]
+    assert (neu.preis_tatsaechlich, neu.km_tatsaechlich) == (79.1, 96.0)

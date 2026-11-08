@@ -64,6 +64,8 @@ def test_vergleich_bahn_und_frei():
     ({"angebote": [{"anbieter": "sixt", "preis": 100_001}]}, "preis"),
     ({"angebote": [{"anbieter": "sixt", "preis": 1, "vor_ort": 3}]}, "vor_ort"),
     ({"hund": "ja"}, "hund"),
+    ({"start": "9999-12-31T10:00", "ende": "9999-12-31T12:00"}, "Jahr"),
+    ({"start": "0001-01-01T10:00"}, "Jahr"),
 ])
 def test_ungueltige_reise_400(aenderung, wort):
     status, a = logik.vergleich(REISE | aenderung, T, I)

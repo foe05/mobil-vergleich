@@ -26,6 +26,7 @@ ANGEBOT_FELDER = {
     "frei": {"anbieter", "preis", "beschreibung"},
 }
 ARTEN = ("monat", "quartal", "jahr", "gesamt")
+JAHRE = (2000, 2100)   # schützt Kalenderrechnung und Tagesschleifen der Auswertung vor Unsinnsdaten
 
 
 class Ungueltig(ValueError):
@@ -95,6 +96,8 @@ def reise_lesen(d, tarife: dict, instanz: Instanz, erlaubt: set[str] = REISE_FEL
     d = _objekt(d)
     _nur(d, erlaubt)
     start, ende = _zeit(d, "start"), _zeit(d, "ende")
+    if not all(JAHRE[0] <= z.year <= JAHRE[1] for z in (start, ende)):
+        raise Ungueltig(f"Jahr muss zwischen {JAHRE[0]} und {JAHRE[1]} liegen.")
     if ende <= start:
         raise Ungueltig("Die Rückgabe liegt vor der Abholung.")
     sz = Szenario(start=start, ende=ende, km=_zahl(d, "km", KM_MAX), spritpreis=_zahl(d, "spritpreis", SPRIT_MAX, 1.75),

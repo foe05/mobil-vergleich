@@ -10,7 +10,7 @@ import streamlit as st
 from engine import Eintrag
 from engine.eigenauto import MONATE
 from seiten.gemeinsam import GRUPPENFARBEN, euro, fehler_melden, modus, verbindung, zahl, zeitpunkt
-from speicher.fahrten import aendern, alle, anlegen, loeschen
+from speicher.fahrten import aendern, alle, anlegen, loeschen, rechnung_nachtragen
 
 FARBEN = GRUPPENFARBEN[modus()]
 ARTEN = ["Carsharing", "Mietwagen", "Bahn", "Sonstiges"]
@@ -110,14 +110,15 @@ def details(con, e: Eintrag) -> None:
             else:
                 st.rerun()
         st.divider()
+        # Key mit DB-Stand: ändert sich der Preis anderswo (z. B. per CoS), zeigt das Feld den neuen Wert
         with st.container(horizontal=True, gap="small"):
             preis = st.number_input("Tatsächlicher Preis €", min_value=0.0, max_value=100_000.0, step=1.0, format="%.2f",
-                                    value=float(e.preis), key=f"preis_{e.id}")
+                                    value=float(e.preis), key=f"preis_{e.id}_{e.preis_tatsaechlich}")
             km = st.number_input("Tatsächliche km", min_value=0.0, max_value=100_000.0, step=10.0,
-                                 value=float(e.km), key=f"km_{e.id}")
+                                 value=float(e.km), key=f"km_{e.id}_{e.km_tatsaechlich}")
         if st.button("Nachtragen", key=f"nachtragen_{e.id}"):
             try:
-                aendern(con, replace(e, preis_tatsaechlich=preis, km_tatsaechlich=km))
+                rechnung_nachtragen(con, e.id, preis, km)   # nur diese Felder – Anlass o. Ä. bleibt
             except Exception as fehler:
                 fehler_melden("Speichern fehlgeschlagen.", fehler)
             else:
