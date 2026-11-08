@@ -11,6 +11,7 @@ import sqlite3
 import streamlit as st
 
 from engine import lade_instanz, lade_tarife
+from engine.texte import euro, zahl  # noqa: F401 – von den Seiten genutzt
 from speicher.fahrten import db_pfad, oeffnen
 
 TARIF_ORDNER = Path(__file__).parent.parent / "tarife"
@@ -77,14 +78,6 @@ def eingaben_halten() -> None:
     for k in (*VERGLEICH_EINGABEN, *(f"{i}_{f}" for i in ids for f in ANGEBOT_FELDER)):
         if k in st.session_state:
             st.session_state[k] = st.session_state[k]
-
-
-def euro(betrag: float, stellen: int = 2) -> str:
-    return f"{betrag:,.{stellen}f}".replace(",", "X").replace(".", ",").replace("X", ".") + " €"
-
-
-def zahl(wert: float, stellen: int = 1) -> str:
-    return f"{wert:,.{stellen}f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
 def zeitpunkt(dt: datetime) -> str:

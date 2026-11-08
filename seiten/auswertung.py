@@ -8,8 +8,9 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
-from engine import BreakEven, Profil, break_even, verlauf, zeitraeume, zeitraumkosten
-from seiten.gemeinsam import PALETTEN, euro, modus, tarife, verbindung, zahl
+from engine import Profil, break_even, verlauf, zeitraeume, zeitraumkosten
+from engine.texte import break_even_satz
+from seiten.gemeinsam import PALETTEN, euro, modus, tarife, verbindung
 from speicher.fahrten import alle
 
 ARTEN = {"Monat": "monat", "Quartal": "quartal", "Jahr": "jahr", "Gesamt": "gesamt"}
@@ -58,20 +59,6 @@ def vorzeichen(betrag: float) -> str:
     if betrag < 0:
         return "−" + euro(-betrag)
     return euro(0)
-
-
-def break_even_satz(p: Profil, be: BreakEven) -> str:
-    if be.status == "schwelle":
-        fahrten = "weitere Fahrt" if be.weitere_fahrten == 1 else "weitere Fahrten"
-        return (f"{p.name} lohnt sich ab ca. {zahl(be.schwelle_km, 0)} km/Jahr. "
-                f"Ihr kommt {'hochgerechnet ' if be.hochgerechnet else ''}auf {zahl(be.km_jahr, 0)} km – "
-                f"etwa {be.weitere_fahrten} {fahrten} wie ‚{be.anlass}‘ pro Jahr.")
-    if be.status == "bereits":
-        return f"{p.name} hätte sich in den letzten 12 Monaten schon gelohnt."
-    if be.status == "nie":
-        return (f"{p.name} lohnt sich mit eurem Fahrprofil nicht – schon die km-Kosten liegen über "
-                f"eurem heutigen Preis pro km.")
-    return "Für eine Schwelle braucht es mindestens drei Fahrten, die ihr mit eigenem Auto gemacht hättet."
 
 
 def verlaufsdiagramm(zeilen: list[dict], profile: list[Profil], farben: dict[str, str]) -> alt.LayerChart:

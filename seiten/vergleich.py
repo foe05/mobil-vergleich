@@ -3,11 +3,13 @@ from __future__ import annotations
 
 from datetime import date, datetime, time, timedelta
 from html import escape
-from urllib.parse import quote, urlencode
 import uuid
 
 import streamlit as st
 
+from engine.grenzen import EURO_MAX, TEXT_MAX
+from engine.schnappschuss import schnappschuss
+from engine.suchlinks import suchlink
 from engine import (NICHT_GEFAHREN, BahnAngebot, Eintrag, FreiesAngebot, MietAngebot, Szenario, reisende_text,
                     vergleiche, vorlage_zeiten)
 from seiten.gemeinsam import (GRUPPENFARBEN, euro, fehler_melden, instanz, md_text, modus, tarife, verbindung,
@@ -18,42 +20,6 @@ from speicher.fahrten import anlegen
 HUND = {"ja": "Hund erlaubt", "nein": "Hund nicht erlaubt", "pruefen": "Hunderegel prüfen"}
 FARBEN = GRUPPENFARBEN[modus()]
 INSTANZ, INSTANZ_HINWEISE = instanz()
-TEXT_MAX = 200            # Zeichen je Freitextfeld
-EURO_MAX = 100_000.0      # Obergrenze für Preise, verhindert „inf €“ bei Unsinnseingaben
-
-
-def suchlink(anbieter: dict, start: datetime, ende: datetime) -> str:
-    """Suchseite des Anbieters mit Ort und Reisezeit vorbelegt; ohne `suche` in angebote.yaml die Startseite."""
-    s = anbieter.get("suche")
-    if not s:
-        return anbieter["link"]
-    if anbieter["id"] == "sixt":
-        return "https://www.sixt.de/betafunnel/#/offerlist?" + urlencode({
-            "zen_pu_branch_id": s["filiale"], "zen_do_branch_id": s["filiale"],
-            "zen_pu_title": s["titel"], "zen_do_title": s["titel"],
-            "zen_pu_time": f"{start:%Y-%m-%dT%H:%M}", "zen_do_time": f"{ende:%Y-%m-%dT%H:%M}",
-            "zen_vehicle_type": "car"})
-    if anbieter["id"] == "europcar":
-        return "https://www.europcar.de/de-de/reservation/vehicles?" + urlencode({
-            "pickupLocation": s["station"], "dropoffLocation": s["station"],
-            "pickupYear": start.year, "pickupMonth": start.month, "pickupDay": start.day,
-            "pickupHour": start.hour, "pickupMinute": start.minute,
-            "dropoffYear": ende.year, "dropoffMonth": ende.month, "dropoffDay": ende.day,
-            "dropoffHour": ende.hour, "dropoffMinute": ende.minute})
-    if anbieter["id"] == "getaround":
-        return "https://getaround.com/de/search?" + urlencode({
-            "address": s["adresse"], "city_display_name": s["adresse"], "country_scope": "DE",
-            "latitude": s["breite"], "longitude": s["laenge"],
-            "start_date": f"{start:%Y-%m-%d}", "start_time": f"{start:%H:%M}",
-            "end_date": f"{ende:%Y-%m-%d}", "end_time": f"{ende:%H:%M}"})
-    if anbieter["id"] == "bahn":
-        # sts=false: nur die Suchmaske füllen – ohne Ziel würde die Suche sofort ins Leere laufen
-        return "https://www.bahn.de/buchung/start#" + urlencode({
-            "sts": "false", "so": s["start"], "soid": f"O={s['start']}",
-            "hd": f"{start:%Y-%m-%dT%H:%M:%S}", "hza": "D",
-            "rd": f"{ende:%Y-%m-%dT%H:%M:%S}", "rza": "D"},
-            quote_via=lambda wert, *_: quote(wert, safe=":"))   # Uhrzeiten wie von bahn.de selbst erzeugt
-    return anbieter["link"]
 
 
 # ---------- Voreinstellungen ----------
@@ -235,18 +201,6 @@ for h in INSTANZ_HINWEISE:
 EIGENAUTO = {"wäre gefahren": True, "nicht gefahren": False}
 
 
-def schnappschuss() -> dict:
-    """Szenario, Rangliste und Tarifstand zum Zeitpunkt der Entscheidung – nur JSON-Typen."""
-    return {
-        "szenario": {"start": start.isoformat(), "ende": ende.isoformat(), "km": sz.km,
-                     "spritpreis": spritpreis, "hund": hund, "km_paket_nutzen": km_paket,
-                     "selbstbehalt_reduzieren": sb},
-        "rangliste": [{"anbieter": e.anbieter, "option": e.option, "gruppe": e.gruppe,
-                       "gesamt": e.gesamt, "posten": dict(e.posten)} for e in ergebnisse],
-        "tarifstand": {t["name"]: str(t["stand"]) for t in T["carsharing"]},
-    }
-
-
 st.subheader("Entscheidung festhalten", anchor=False)
 con = verbindung()
 if con is not None:
@@ -269,7 +223,7 @@ if con is not None:
     if st.button("Gespeichert" if schon else "Speichern", type="primary",
                  disabled=wahl is None or eigen is None or schon) and not schon:
         try:
-            eintrag.vergleich = schnappschuss()
+            eintrag.vergleich = schnappschuss(sz, ergebnisse, T)
             anlegen(con, eintrag)
         except Exception as fehler:   # sqlite, Platte voll, schreibgeschützt …
             fehler_melden("Speichern fehlgeschlagen.", fehler)
