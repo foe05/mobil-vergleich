@@ -36,3 +36,29 @@ def test_sortierung(tmp_path):
     for tag in (3, 20, 11):
         anlegen(con, replace(BEISPIEL, start=datetime(2026, 10, tag), ende=datetime(2026, 10, tag, 18)))
     assert [e.start.day for e in alle(con)] == [20, 11, 3]
+
+
+def test_nachtragen_laesst_andere_felder(tmp_path):
+    from speicher.fahrten import holen, rechnung_nachtragen
+    con = oeffnen(tmp_path / "m.db")
+    e = replace(BEISPIEL, km_tatsaechlich=41); e.id = anlegen(con, e)
+    aendern(con, replace(e, anlass="neu"))           # gleichzeitige Änderung in der App
+    rechnung_nachtragen(con, e.id, 79.1, None)
+    x = holen(con, e.id)
+    assert (x.anlass, x.preis_tatsaechlich, x.km_tatsaechlich) == ("neu", 79.1, 41)
+    rechnung_nachtragen(con, e.id, 80.0, 50)
+    assert holen(con, e.id).km_tatsaechlich == 50
+
+
+def test_holen_unbekannt_none(tmp_path):
+    from speicher.fahrten import holen
+    assert holen(oeffnen(tmp_path / "m.db"), 99) is None
+
+
+def test_doppelt(tmp_path):
+    from speicher.fahrten import doppelt
+    con = oeffnen(tmp_path / "m.db")
+    assert doppelt(con, BEISPIEL) is None
+    i = anlegen(con, replace(BEISPIEL))
+    assert doppelt(con, replace(BEISPIEL, km_geplant=99)) == i
+    assert doppelt(con, replace(BEISPIEL, anlass="anders")) is None

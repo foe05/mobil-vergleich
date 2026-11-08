@@ -1,4 +1,6 @@
 """Einziger SQLite-Zugriff: Schema, anlegen, ändern, löschen, abfragen."""
+from __future__ import annotations
+
 import json
 import os
 import sqlite3
@@ -80,9 +82,29 @@ def _eintrag(z: sqlite3.Row | tuple) -> Eintrag:
                    id_, datetime.fromisoformat(angelegt))
 
 
+_SPALTEN = ("SELECT id, angelegt_am, start, ende, anlass, ergebnis, gruppe, km_geplant, km_tatsaechlich, "
+            "preis_geplant, preis_tatsaechlich, eigenauto_gefahren, vergleich FROM eintraege")
+
+
 def alle(con: sqlite3.Connection) -> list[Eintrag]:
-    zeilen = con.execute(
-        "SELECT id, angelegt_am, start, ende, anlass, ergebnis, gruppe, km_geplant, km_tatsaechlich, "
-        "preis_geplant, preis_tatsaechlich, eigenauto_gefahren, vergleich "
-        "FROM eintraege ORDER BY start DESC, id DESC").fetchall()
+    zeilen = con.execute(f"{_SPALTEN} ORDER BY start DESC, id DESC").fetchall()
     return [_eintrag(z) for z in zeilen]
+
+
+def holen(con: sqlite3.Connection, id: int) -> Eintrag | None:
+    z = con.execute(f"{_SPALTEN} WHERE id = ?", (id,)).fetchone()
+    return None if z is None else _eintrag(z)
+
+
+def rechnung_nachtragen(con: sqlite3.Connection, id: int, preis: float, km: float | None) -> None:
+    """Nur Preis und ggf. km – gleichzeitige Änderungen an anderen Feldern (App) bleiben erhalten."""
+    con.execute("UPDATE eintraege SET preis_tatsaechlich = ?, km_tatsaechlich = COALESCE(?, km_tatsaechlich) "
+                "WHERE id = ?", (preis, km, id))
+    con.commit()
+
+
+def doppelt(con: sqlite3.Connection, e: Eintrag) -> int | None:
+    """id einer schon gespeicherten Fahrt mit gleicher Zeit, gleichem Ergebnis und Anlass."""
+    z = con.execute("SELECT id FROM eintraege WHERE start = ? AND ende = ? AND ergebnis = ? AND anlass = ? "
+                    "ORDER BY id LIMIT 1", (e.start.isoformat(), e.ende.isoformat(), e.ergebnis, e.anlass)).fetchone()
+    return None if z is None else z[0]
