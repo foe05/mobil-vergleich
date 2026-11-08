@@ -64,3 +64,21 @@ def test_fahrten_anlass_und_eigenauto_aendern(db):
     assert fehler(at) == []
     neu = alle(db)[0]
     assert (neu.anlass, neu.eigenauto_gefahren, neu.preis_tatsaechlich) == ("Baumarkt", False, None)
+
+
+def test_vergleich_aus_link(db):
+    at = AppTest.from_file(str(WURZEL / "app.py"), default_timeout=30)
+    at.query_params.update({"start": "2026-11-14T10:00", "ende": "2026-11-15T16:00", "km": "333", "hund": "0",
+                            "anlass": "Oma"})
+    at.run()
+    assert fehler(at) == []
+    z = at.session_state
+    assert (z["km"], z["anlass"], z["hund"], z["preset"]) == (333, "Oma", False, None)
+
+
+def test_vergleich_link_unsinn_faellt_auf_vorlage(db):
+    at = AppTest.from_file(str(WURZEL / "app.py"), default_timeout=30)
+    at.query_params.update({"start": "2026-11-14T10:00", "ende": "gestern", "km": "abc"})
+    at.run()
+    assert fehler(at) == []
+    assert at.session_state["preset"] == "Oma (1 Nacht)"

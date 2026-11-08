@@ -35,3 +35,28 @@ def test_texte():
     assert zahl(1234.56) == "1.234,6"
     p = Profil("x", "Kleinwagen", "q", "2026", {"a": 1.0}, {"b": 0.1})
     assert break_even_satz(p, BreakEven("zu_wenig_daten")).startswith("Für eine Schwelle")
+
+
+def test_aus_link_gueltig():
+    from datetime import time
+    from engine.suchlinks import aus_link
+    w = aus_link({"start": "2026-11-14T10:00", "ende": "2026-11-15T16:30", "km": "333", "hund": "0", "anlass": "Oma"})
+    assert w == {"start_d": date(2026, 11, 14), "start_t": time(10), "ende_d": date(2026, 11, 15),
+                 "ende_t": time(16, 30), "km": 333, "hund": False, "anlass": "Oma"}
+    assert "hund" not in aus_link({"start": "2026-11-14T10:00", "ende": "2026-11-15T16:30", "km": "5"})
+
+
+import pytest  # noqa: E402
+
+
+@pytest.mark.parametrize("q", [
+    {"start": "2026-11-14T10:00", "ende": "2026-11-14T09:00", "km": "5"},
+    {"start": "2026-11-14T10:00", "ende": "2026-11-15T09:00", "km": "abc"},
+    {"start": "2026-11-14T10:00", "km": "5"},
+    {"start": "2026-11-14T10:00", "ende": "2026-11-15T09:00", "km": "100001"},
+    {"start": "2026-11-14T10:00", "ende": "2026-11-15T09:00", "km": "5", "hund": "vielleicht"},
+    {},
+])
+def test_aus_link_unsinn_none(q):
+    from engine.suchlinks import aus_link
+    assert aus_link(q) is None

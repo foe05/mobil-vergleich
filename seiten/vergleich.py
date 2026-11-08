@@ -9,7 +9,7 @@ import streamlit as st
 
 from engine.grenzen import EURO_MAX, TEXT_MAX
 from engine.schnappschuss import schnappschuss
-from engine.suchlinks import suchlink
+from engine.suchlinks import aus_link, suchlink
 from engine import (NICHT_GEFAHREN, BahnAngebot, Eintrag, FreiesAngebot, MietAngebot, Szenario, reisende_text,
                     vergleiche, vorlage_zeiten)
 from seiten.gemeinsam import (GRUPPENFARBEN, euro, fehler_melden, instanz, md_text, modus, tarife, verbindung,
@@ -46,7 +46,10 @@ def eigene_eingabe():
     st.session_state["preset"] = None   # Hand-Änderung hebt die Auswahl auf, der Anlass bleibt
 
 
-if "start_d" not in st.session_state:
+link = aus_link(st.query_params.to_dict()) if "start_d" not in st.session_state else None
+if link:   # Reise aus einem Link (z. B. vom Chief of Staff), keine Vorlage gewählt
+    st.session_state.update(preset=None, **link)
+elif "start_d" not in st.session_state:
     vorlagen = list(voreinstellungen())
     if vorlagen:   # zweite Vorlage wie bisher „Oma (1 Nacht)“, sonst die erste
         st.session_state["preset"] = vorlagen[min(1, len(vorlagen) - 1)]

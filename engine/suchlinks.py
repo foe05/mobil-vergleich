@@ -37,3 +37,25 @@ def suchlink(anbieter: dict, start: datetime, ende: datetime) -> str:
             "rd": f"{ende:%Y-%m-%dT%H:%M:%S}", "rza": "D"},
             quote_via=lambda wert, *_: quote(wert, safe=":"))   # Uhrzeiten wie von bahn.de selbst erzeugt
     return anbieter["link"]
+
+
+def aus_link(q) -> dict | None:
+    """Reise aus den Link-Parametern der App (start, ende, km, hund, anlass) für den Session State.
+    None, wenn etwas fehlt oder nicht passt – dann gilt der normale Start mit Vorlage."""
+    from .grenzen import KM_MAX, TEXT_MAX
+    try:
+        start = datetime.strptime(q["start"], "%Y-%m-%dT%H:%M")
+        ende = datetime.strptime(q["ende"], "%Y-%m-%dT%H:%M")
+        km = int(q["km"])
+    except (KeyError, TypeError, ValueError):
+        return None
+    if ende <= start or not 0 <= km <= KM_MAX:
+        return None
+    werte = {"start_d": start.date(), "start_t": start.time(), "ende_d": ende.date(), "ende_t": ende.time(), "km": km}
+    if "hund" in q:
+        if q["hund"] not in ("0", "1"):
+            return None
+        werte["hund"] = q["hund"] == "1"
+    if q.get("anlass"):
+        werte["anlass"] = str(q["anlass"]).strip()[:TEXT_MAX]
+    return werte
