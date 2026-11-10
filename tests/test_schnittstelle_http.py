@@ -7,8 +7,11 @@ import urllib.request
 from pathlib import Path
 
 import pytest
+import socket
+import time
 
 from schnittstelle import logik
+from schnittstelle import server
 from schnittstelle.server import baue_server
 
 SCHLUESSEL = "k" * 40
@@ -102,3 +105,36 @@ def test_log_ohne_koerper_und_schluessel(url, caplog):
     text = caplog.text
     assert "POST /vergleich 200" in text
     assert "123.45" not in text and SCHLUESSEL not in text and "geheim" not in text
+
+
+def test_fahrt_einzeln_get_und_seltsame_id(url):
+    status, a = ruf(url, "/fahrten", "POST", REISE | {"wahl": "nicht gefahren", "eigenes_auto": True, "anlass": "x"})
+    assert status == 201
+    i = a["fahrt"]["id"]
+    assert ruf(url, f"/fahrten/{i}")[1]["fahrt"]["id"] == i
+    assert ruf(url, "/fahrten/%C2%B2")[0] == 404
+    assert ruf(url, "/fahrten/99999999999999999999")[0] == 404
+    assert ruf(url, f"/fahrten/{i}", "DELETE")[0] == 405
+
+
+def test_chunked_koerper_411(url):
+    host, port = url.removeprefix("http://").split(":")
+    with socket.create_connection((host, int(port)), timeout=5) as s:
+        s.sendall(f"POST /vergleich HTTP/1.1\r\nHost: x\r\nAuthorization: Bearer {SCHLUESSEL}\r\n"
+                  "Transfer-Encoding: chunked\r\n\r\n2\r\n{}\r\n0\r\n\r\n".encode())
+        antwort = s.recv(4096).decode()
+    assert antwort.startswith("HTTP/1.0 411") or antwort.startswith("HTTP/1.1 411")
+
+
+def test_handler_hat_socket_timeout():
+    assert server.Handler.timeout is not None and 0 < server.Handler.timeout <= 60
+
+
+def test_haengende_verbindung_wird_geschlossen(url, monkeypatch):
+    monkeypatch.setattr(server.Handler, "timeout", 0.5)   # kurz für den Test; Standard prüft der Test davor
+    host, port = url.removeprefix("http://").split(":")
+    with socket.create_connection((host, int(port)), timeout=5) as s:
+        s.sendall(b"GET /lebt HTTP/1.1\r\n")   # Kopf nie beendet
+        beginn = time.monotonic()
+        assert s.recv(4096) == b""
+        assert time.monotonic() - beginn < 3

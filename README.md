@@ -95,6 +95,8 @@ Der Chief of Staff bedient die App über eine kleine JSON-Schnittstelle: Verglei
 Entscheidung speichern, Rechnung nachtragen, Auswertung. Sie läuft als zweiter Compose-Dienst
 `mobil-api` (gleiches Image, gleiche Datenbank) und ist **nur vom Host** erreichbar:
 `127.0.0.1:8502` (anderer Port über `API_PORT` in `.env`). In NPM keinen Proxy Host dafür anlegen.
+Wegen tool-log hängt der Dienst zusätzlich im Proxy-Netz: Andere Container dort erreichen
+`mobil-vergleich-api:8502` direkt – geschützt ist die Schnittstelle dann nur durch den Schlüssel.
 
 Einrichten:
 1. Schlüssel erzeugen: `openssl rand -hex 32`
@@ -103,13 +105,15 @@ Einrichten:
 
 Ohne Schlüssel (oder kürzer als 32 Zeichen) antwortet die Schnittstelle nur auf `GET /lebt`, alles
 andere mit 503. Jeder Aufruf braucht `Authorization: Bearer <MOBIL_API_KEY>`; protokolliert werden nur
-Methode, Pfad, Status und Dauer.
+Methode, Pfad, Status und Dauer. Körper nur mit `Content-Length` (höchstens 64 KB, chunked → 411);
+eine Verbindung, die 30 s nichts sendet, wird geschlossen.
 
 | Aufruf | Wirkung |
 |---|---|
 | `POST /vergleich` | Rangliste und Suchlinks für eine Reise (`start`, `ende` als `JJJJ-MM-TTTHH:MM`, `km`, optional `hund`, `spritpreis`, `km_paket`, `selbstbehalt_reduzieren`, `angebote`) |
 | `POST /fahrten` | Entscheidung speichern: Reise + `wahl` (Beschriftung aus der Rangliste oder `nicht gefahren`), `eigenes_auto`, `anlass`; doppelt → 409 |
 | `GET /fahrten?offen=1&anzahl=20` | Fahrten, neueste zuerst; `offen=1` nur mit offener Rechnung |
+| `GET /fahrten/<id>` | eine Fahrt (auch ältere als die letzten 100) |
 | `PATCH /fahrten/<id>` | nur `preis_tatsaechlich` und optional `km_tatsaechlich` |
 | `GET /auswertung?zeitraum=quartal&datum=JJJJ-MM-TT` | Kosten je Profil und Break-even-Satz |
 

@@ -44,6 +44,7 @@ class Antwort(Exception):
 
 
 class Handler(BaseHTTPRequestHandler):
+    timeout = 30   # Sekunden je Socket-Lesevorgang; hängende Verbindungen blockieren keinen Thread
     server: Server
     protocol_version = "HTTP/1.1"
 
@@ -98,7 +99,7 @@ class Handler(BaseHTTPRequestHandler):
         if not hmac.compare_digest(kopf.encode(), erwartet.encode()):
             raise Antwort(401, {"fehler": "Nicht angemeldet."})
         treffer = _FAHRT.match(pfad)
-        erlaubt = {"PATCH"} if treffer else WEGE.get(pfad)
+        erlaubt = {"GET", "PATCH"} if treffer else WEGE.get(pfad)
         if erlaubt is None:
             raise Antwort(404, {"fehler": "Unbekannter Pfad."})
         if methode not in erlaubt:
@@ -111,6 +112,8 @@ class Handler(BaseHTTPRequestHandler):
             return logik.vergleich(koerper, tarife, instanz)
         con = oeffnen(self.server.db)
         try:
+            if treffer and methode == "GET":
+                return logik.fahrt(treffer.group(1), con, datetime.now())
             if treffer:
                 return logik.rechnung(treffer.group(1), koerper, con)
             if pfad == "/fahrten" and methode == "POST":
@@ -122,6 +125,9 @@ class Handler(BaseHTTPRequestHandler):
             con.close()
 
     def _koerper(self):
+        if self.headers.get("Transfer-Encoding"):
+            self.close_connection = True   # Körper ohne Längenangabe bleibt ungelesen
+            raise Antwort(411, {"fehler": "Bitte mit Content-Length senden."})
         try:
             laenge = int(self.headers.get("Content-Length", "0"))
         except ValueError:

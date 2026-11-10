@@ -5,6 +5,7 @@ unbekannte Felder, Typen und dieselben Grenzen wie in der App (engine/grenzen.py
 """
 from __future__ import annotations
 
+import re
 import sqlite3
 from datetime import date, datetime
 
@@ -225,10 +226,24 @@ def fahrten(query: dict[str, str], con: sqlite3.Connection, jetzt: datetime) -> 
     return 200, {"fahrten": [_fahrt(e, jetzt) for e in liste[:anzahl]]}
 
 
+def _holen_nach_text(con: sqlite3.Connection, id_text: str):
+    """Nur 1–9 ASCII-Ziffern; alles andere (², riesige Zahlen, Vorzeichen) ist keine Fahrt."""
+    return holen(con, int(id_text)) if re.fullmatch(r"[0-9]{1,9}", id_text) else None
+
+
+def _unbekannt(id_text: str) -> tuple[int, dict]:
+    return 404, {"fehler": f"Fahrt #{id_text[:20]} gibt es nicht."}
+
+
+def fahrt(id_text: str, con: sqlite3.Connection, jetzt: datetime) -> tuple[int, dict]:
+    e = _holen_nach_text(con, id_text)
+    return (200, {"fahrt": _fahrt(e, jetzt)}) if e is not None else _unbekannt(id_text)
+
+
 def rechnung(id_text: str, koerper, con: sqlite3.Connection, jetzt: datetime | None = None) -> tuple[int, dict]:
-    e = holen(con, int(id_text)) if id_text.isdigit() else None
+    e = _holen_nach_text(con, id_text)
     if e is None:
-        return 404, {"fehler": f"Fahrt #{id_text} gibt es nicht."}
+        return _unbekannt(id_text)
     try:
         koerper = _objekt(koerper)
         _nur(koerper, {"preis_tatsaechlich", "km_tatsaechlich"})

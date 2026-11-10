@@ -145,6 +145,19 @@ def test_rechnung_unbekannt_404(con):
     assert logik.rechnung("abc", {"preis_tatsaechlich": 1}, con)[0] == 404
 
 
+@pytest.mark.parametrize("id_text", ["²", "99999999999999999999", "0x1", "-1", " 1"])
+def test_rechnung_seltsame_id_404(con, id_text):
+    assert logik.rechnung(id_text, {"preis_tatsaechlich": 1}, con)[0] == 404
+
+
+def test_fahrt_einzeln(con):
+    i = _anlegen(con, "2026-10-01T10:00")
+    status, a = logik.fahrt(str(i), con, datetime(2026, 11, 9, 12))
+    assert status == 200 and a["fahrt"]["id"] == i and a["fahrt"]["rechnung_offen"] is True
+    assert logik.fahrt("99", con, datetime.now())[0] == 404
+    assert logik.fahrt("²", con, datetime.now())[0] == 404
+
+
 def test_rechnung_nicht_gefahren_400(con):
     i = _anlegen(con, "2026-10-01T10:00", wahl="nicht gefahren")
     assert logik.rechnung(str(i), {"preis_tatsaechlich": 1}, con)[0] == 400
